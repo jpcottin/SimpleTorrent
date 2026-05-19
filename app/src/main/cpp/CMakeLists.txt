@@ -28,18 +28,9 @@ set(python-bindings     OFF CACHE BOOL "" FORCE)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
 
 find_package(Boost REQUIRED)
-
-# Modern Boost CMake (>=1.70) uses imported targets and leaves Boost_INCLUDE_DIRS empty.
-# When cross-compiling with the NDK, the sysroot boundary also strips -isystem paths.
-# BOOST_INCLUDE_DIR is passed explicitly from build.gradle.kts so we use plain -I here.
-if(DEFINED BOOST_INCLUDE_DIR)
-    include_directories(${BOOST_INCLUDE_DIR})
-elseif(TARGET Boost::headers)
-    get_target_property(_boost_inc Boost::headers INTERFACE_INCLUDE_DIRECTORIES)
-    if(_boost_inc)
-        include_directories(${_boost_inc})
-    endif()
-endif()
+# Boost include path is injected via CMAKE_CXX_FLAGS (cppFlags in build.gradle.kts).
+# include_directories() is intentionally not used here: CMake suppresses -I/usr/include
+# on Linux because it detects it as an implicit host-compiler directory.
 
 add_subdirectory(${LIBTORRENT_DIR} ${CMAKE_CURRENT_BINARY_DIR}/libtorrent EXCLUDE_FROM_ALL)
 
