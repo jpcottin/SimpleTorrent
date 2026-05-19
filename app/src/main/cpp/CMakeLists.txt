@@ -24,8 +24,14 @@ set(build_tools         OFF CACHE BOOL "" FORCE)
 set(python-bindings     OFF CACHE BOOL "" FORCE)
 
 # Allow find_package to reach host Boost headers during cross-compilation
-# (Boost is header-only for libtorrent's needs, so macOS headers are fine)
+# (Boost is header-only for libtorrent's needs, so macOS/Linux host headers are fine)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
+
+# Explicitly resolve Boost include dirs and inject them globally.
+# The NDK sysroot isolation can prevent libtorrent's own find_package(Boost) from
+# propagating include paths correctly; doing it here ensures every target sees them.
+find_package(Boost REQUIRED)
+include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 
 add_subdirectory(${LIBTORRENT_DIR} ${CMAKE_CURRENT_BINARY_DIR}/libtorrent EXCLUDE_FROM_ALL)
 

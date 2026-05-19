@@ -14,6 +14,10 @@ Android NDK and the libtorrent-rasterbar C++ library.
 - Share `.torrent` files to other clients via the system share sheet
 - Edge-to-edge UI with Material You theming
 
+## Demo
+
+https://github.com/user-attachments/assets/6182efdb-9862-47ee-9fa7-011a64ee87eb
+
 ## Screenshots
 
 | Torrent list with live download |
