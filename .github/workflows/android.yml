@@ -2,9 +2,9 @@ name: Android CI
 
 on:
   push:
-    branches: [ RC_2_0, main ]
+    branches: [ master, main ]
   pull_request:
-    branches: [ RC_2_0, main ]
+    branches: [ master, main ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -103,7 +103,7 @@ jobs:
   # Requires NDK build + emulator; triggered only on pushes to main to save CI minutes.
   instrumented-tests:
     name: Instrumented Tests
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
