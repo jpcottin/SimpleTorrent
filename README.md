@@ -16,9 +16,9 @@ Android NDK and the libtorrent-rasterbar C++ library.
 
 ## Screenshots
 
-| Torrent list | Peer list expanded | Create torrent |
-|---|---|---|
-| *(Add screenshots here)* | | |
+| Torrent list with live download |
+|---|
+| <img src="screenshots/main.png" width="320" alt="Torrent list showing Big Buck Bunny and Sintel seeding, and Cosmos Laundromat downloading at 3.8 MB/s with 27 peers and live peer table"> |
 
 ## Technical Stack
 
