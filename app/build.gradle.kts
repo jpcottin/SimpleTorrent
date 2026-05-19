@@ -21,15 +21,15 @@ android {
                 // BOOST_CMAKE_DIR env var lets CI override the Homebrew default path
                 val boostDir = System.getenv("BOOST_CMAKE_DIR")
                     ?: "/opt/homebrew/lib/cmake/Boost-1.90.0"
-                // BOOST_INCLUDE_DIR: injected via cppFlags (-I flag) rather than CMake
-                // include_directories(), because CMake suppresses -I/usr/include on Linux
-                // (it detects it as a host-compiler implicit directory and drops the flag).
+                // BOOST_INCLUDE_DIR: passed to CMake as a cache var; used via
+                // target_compile_options() in CMakeLists.txt so it bypasses both
+                // CMake's implicit-include filtering AND configure-time feature checks.
                 val boostInclude = System.getenv("BOOST_INCLUDE_DIR")
                     ?: "/opt/homebrew/include"
-                cppFlags += "-I$boostInclude"
                 arguments(
                     // libtorrent is in libs/libtorrent submodule — no path override needed
                     "-DBoost_DIR=$boostDir",
+                    "-DBOOST_INCLUDE_DIR=$boostInclude",
                     "-Dencryption=OFF",
                     "-DBUILD_SHARED_LIBS=OFF",
                     "-Dbuild_tests=OFF",

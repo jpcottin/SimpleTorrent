@@ -28,13 +28,21 @@ set(python-bindings     OFF CACHE BOOL "" FORCE)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
 
 find_package(Boost REQUIRED)
-# Boost include path is injected via CMAKE_CXX_FLAGS (cppFlags in build.gradle.kts).
-# include_directories() is intentionally not used here: CMake suppresses -I/usr/include
-# on Linux because it detects it as an implicit host-compiler directory.
 
 add_subdirectory(${LIBTORRENT_DIR} ${CMAKE_CURRENT_BINARY_DIR}/libtorrent EXCLUDE_FROM_ALL)
 
 add_library(simpletorrent SHARED torrent_jni.cpp)
+
+# Inject Boost include path via target_compile_options, NOT include_directories().
+# Rationale: CMake silently filters /usr/include from INCLUDE_DIRECTORIES on Linux
+# because it matches the host g++ implicit include list. target_compile_options()
+# emits raw -I flags that bypass this filtering. Using cppFlags/CMAKE_CXX_FLAGS is
+# also wrong because those affect configure-time feature probes (e.g. std::atomic
+# check in libtorrent) and break cross-compilation with host headers in the way.
+if(DEFINED BOOST_INCLUDE_DIR)
+    target_compile_options(torrent-rasterbar PRIVATE "-I${BOOST_INCLUDE_DIR}")
+    target_compile_options(simpletorrent     PRIVATE "-I${BOOST_INCLUDE_DIR}")
+endif()
 
 target_link_libraries(simpletorrent
     PRIVATE
