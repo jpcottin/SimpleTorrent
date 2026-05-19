@@ -63,6 +63,7 @@ jobs:
           BOOST_DIR=$(find /opt/homebrew/lib/cmake -maxdepth 1 -name "Boost-*" -type d \
                       | sort -V | tail -1)
           echo "BOOST_CMAKE_DIR=$BOOST_DIR" >> "$GITHUB_ENV"
+          echo "BOOST_INCLUDE_DIR=/opt/homebrew/include" >> "$GITHUB_ENV"
           echo "Found Boost CMake dir: $BOOST_DIR"
 
       - name: Build debug APK
@@ -132,6 +133,7 @@ jobs:
           BOOST_DIR=$(find /usr/lib -maxdepth 4 -name "Boost-*" -type d 2>/dev/null \
                       | sort -V | tail -1)
           echo "BOOST_CMAKE_DIR=$BOOST_DIR" >> "$GITHUB_ENV"
+          echo "BOOST_INCLUDE_DIR=/usr/include" >> "$GITHUB_ENV"
           echo "Found Boost CMake dir: $BOOST_DIR"
 
       - name: Run instrumented tests

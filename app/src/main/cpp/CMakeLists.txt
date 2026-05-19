@@ -27,11 +27,19 @@ set(python-bindings     OFF CACHE BOOL "" FORCE)
 # (Boost is header-only for libtorrent's needs, so macOS/Linux host headers are fine)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
 
-# Explicitly resolve Boost include dirs and inject them globally.
-# The NDK sysroot isolation can prevent libtorrent's own find_package(Boost) from
-# propagating include paths correctly; doing it here ensures every target sees them.
 find_package(Boost REQUIRED)
-include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
+
+# Modern Boost CMake (>=1.70) uses imported targets and leaves Boost_INCLUDE_DIRS empty.
+# When cross-compiling with the NDK, the sysroot boundary also strips -isystem paths.
+# BOOST_INCLUDE_DIR is passed explicitly from build.gradle.kts so we use plain -I here.
+if(DEFINED BOOST_INCLUDE_DIR)
+    include_directories(${BOOST_INCLUDE_DIR})
+elseif(TARGET Boost::headers)
+    get_target_property(_boost_inc Boost::headers INTERFACE_INCLUDE_DIRECTORIES)
+    if(_boost_inc)
+        include_directories(${_boost_inc})
+    endif()
+endif()
 
 add_subdirectory(${LIBTORRENT_DIR} ${CMAKE_CURRENT_BINARY_DIR}/libtorrent EXCLUDE_FROM_ALL)
 

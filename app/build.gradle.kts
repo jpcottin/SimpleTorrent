@@ -7,6 +7,7 @@ plugins {
 android {
     namespace = "com.jpcexample.simpletorrent"
     compileSdk = 36
+    ndkVersion = "28.2.13676358"
     defaultConfig {
         applicationId = "com.jpcexample.simpletorrent"
         minSdk = 24
@@ -20,9 +21,13 @@ android {
                 // BOOST_CMAKE_DIR env var lets CI override the Homebrew default path
                 val boostDir = System.getenv("BOOST_CMAKE_DIR")
                     ?: "/opt/homebrew/lib/cmake/Boost-1.90.0"
+                // BOOST_INCLUDE_DIR: explicit -I path, bypasses NDK sysroot stripping of -isystem
+                val boostInclude = System.getenv("BOOST_INCLUDE_DIR")
+                    ?: "/opt/homebrew/include"
                 arguments(
                     // libtorrent is in libs/libtorrent submodule — no path override needed
                     "-DBoost_DIR=$boostDir",
+                    "-DBOOST_INCLUDE_DIR=$boostInclude",
                     "-Dencryption=OFF",
                     "-DBUILD_SHARED_LIBS=OFF",
                     "-Dbuild_tests=OFF",
