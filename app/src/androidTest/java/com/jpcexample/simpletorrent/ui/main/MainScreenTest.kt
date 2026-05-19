@@ -36,10 +36,12 @@ class MainScreenTest {
             override fun removeTorrent(infoHash: String, deleteFiles: Boolean) {}
             override suspend fun createTorrentFrom(s: String, o: String) = createResult
         }
+        // Construct ViewModel outside the composable to avoid ViewModelConstructorInComposable lint
+        val viewModel = MainScreenViewModel(repo)
         rule.setContent {
             MainScreen(
                 onItemClick = {},
-                viewModel = MainScreenViewModel(repo),
+                viewModel = viewModel,
             )
         }
     }
