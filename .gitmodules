@@ -1,0 +1,3 @@
+[submodule "libs/libtorrent"]
+	path = libs/libtorrent
+	url = git@github.com:jpcottin/libtorrent.git

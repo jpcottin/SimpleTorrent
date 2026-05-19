@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Horseshoe magnet icon — evokes magnet links and BitTorrent.
+  Canvas: 108×108. Safe zone: 18–90. Magnet spans x=20–88, y=24–84 (centered).
+  Outer arms: 16dp wide each. Arch peaks ~y=30 via cubic bezier.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Horseshoe body (white):
+         M20,84 → up left arm → arch over top → down right arm → inner right arm up →
+         inner arch back → inner left arm down → close -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M20,84 L20,48 C20,24 88,24 88,48 L88,84 L72,84 L72,52 C72,40 36,40 36,52 L36,84 Z"/>
+
+    <!-- Left pole tip (red) -->
+    <path
+        android:fillColor="#FFE53935"
+        android:pathData="M20,84 L20,68 L36,68 L36,84 Z"/>
+
+    <!-- Right pole tip (red) -->
+    <path
+        android:fillColor="#FFE53935"
+        android:pathData="M72,84 L72,68 L88,68 L88,84 Z"/>
+
+    <!-- Magnetic field arcs between the poles (subtle white, reduced alpha) -->
+    <path
+        android:strokeColor="#66FFFFFF"
+        android:strokeWidth="2.5"
+        android:fillColor="#00000000"
+        android:pathData="M36,76 Q54,96 72,76"/>
+    <path
+        android:strokeColor="#44FFFFFF"
+        android:strokeWidth="2"
+        android:fillColor="#00000000"
+        android:pathData="M28,76 Q54,104 80,76"/>
+</vector>
