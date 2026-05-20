@@ -177,6 +177,9 @@ Java_com_jpcexample_simpletorrent_data_TorrentManager_nativeInit(
     settings.set_bool(lt::settings_pack::enable_lsd, true);   // local peer discovery on same LAN
     settings.set_bool(lt::settings_pack::enable_upnp, true);
     settings.set_bool(lt::settings_pack::enable_natpmp, true);
+    // Default LSD interval is 5 minutes — far too slow for local testing.
+    // 15 s means peers on the same LAN (or same emulator host) find each other almost instantly.
+    settings.set_int(lt::settings_pack::local_service_announce_interval, 15);
 
     g_session = std::make_unique<lt::session>(settings);
     LOGI("Session started  save_path=%s  state_dir=%s", g_save_path.c_str(), g_state_dir.c_str());

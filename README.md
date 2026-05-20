@@ -91,6 +91,12 @@ The JNI bridge serialises torrent state to a small JSON string on each poll. Thi
 the Kotlin/C++ boundary thin — the Kotlin side only deals with plain data classes, never
 with raw native pointers.
 
+Local peer discovery (LSD) is tuned to announce every 15 seconds (libtorrent's default
+is 5 minutes). This makes peers on the same LAN — or two emulators on the same host —
+find each other almost immediately. Public trackers are also embedded in created torrents
+for internet-wide reachability, but they cannot cross-connect two peers behind the same
+NAT (e.g. two emulators sharing a host's IP).
+
 ## Building
 
 ### Prerequisites
