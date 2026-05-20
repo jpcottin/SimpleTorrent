@@ -133,7 +133,12 @@ jobs:
           BOOST_DIR=$(find /usr/lib -maxdepth 4 -name "Boost-*" -type d 2>/dev/null \
                       | sort -V | tail -1)
           echo "BOOST_CMAKE_DIR=$BOOST_DIR" >> "$GITHUB_ENV"
-          echo "BOOST_INCLUDE_DIR=/usr/include" >> "$GITHUB_ENV"
+          # Isolated dir with ONLY a boost/ symlink: -I<dir> finds boost/* but does
+          # not expose glibc system headers (features-time64.h → bits/wordsize.h)
+          # which are absent in the NDK cross-compilation sysroot.
+          mkdir -p /tmp/boost-headers
+          ln -s /usr/include/boost /tmp/boost-headers/boost
+          echo "BOOST_INCLUDE_DIR=/tmp/boost-headers" >> "$GITHUB_ENV"
           echo "Found Boost CMake dir: $BOOST_DIR"
 
       - name: Run instrumented tests
