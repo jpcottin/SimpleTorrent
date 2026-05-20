@@ -47,13 +47,14 @@ class MainScreenTest {
     }
 
     private fun fakeTorrent(
+        infoHash: String = "abc123",
         name: String = "Big Buck Bunny",
         state: String = "downloading",
         isPaused: Boolean = false,
         progress: Float = 0.42f,
         peerList: List<PeerInfo> = emptyList(),
     ) = TorrentInfo(
-        infoHash = "abc123", name = name, state = state, isPaused = isPaused,
+        infoHash = infoHash, name = name, state = state, isPaused = isPaused,
         progress = progress, dlRateKbs = 512, ulRateKbs = 64, peers = peerList.size,
         peerList = peerList,
     )
@@ -169,8 +170,8 @@ class MainScreenTest {
     @Test
     fun multipleCards_allNamesVisible() {
         launch(torrents = listOf(
-            fakeTorrent(name = "Sintel"),
-            fakeTorrent(name = "Elephants Dream"),
+            fakeTorrent(infoHash = "hash1", name = "Sintel"),
+            fakeTorrent(infoHash = "hash2", name = "Elephants Dream"),
         ))
         rule.onNodeWithText("Sintel").assertIsDisplayed()
         rule.onNodeWithText("Elephants Dream").assertIsDisplayed()
