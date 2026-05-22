@@ -12,7 +12,8 @@ Android NDK and the libtorrent-rasterbar C++ library.
 - Pause, resume, and delete torrents (with optional file removal)
 - Persistent sessions — resume data is saved on `onStop` and restored on next launch
 - Share `.torrent` files to other clients via the system share sheet
-- Edge-to-edge UI with Material You theming
+- Adaptive multi-column grid — 1 column on phones, 2 on foldables, 3 on tablets
+- Full edge-to-edge UI with proper IME insets, Material You theming
 
 ## Demo
 
@@ -37,7 +38,9 @@ https://github.com/user-attachments/assets/6182efdb-9862-47ee-9fa7-011a64ee87eb
 | Architecture | MVVM — `ViewModel` + `StateFlow` + `DataRepository` |
 | Serialization | kotlinx.serialization 1.8.1 (JSON bridge between JNI and Kotlin) |
 | Async | Kotlin Coroutines 1.10.2 |
+| Adaptive layout | `LazyVerticalGrid` + `GridCells.Adaptive(300.dp)` — phone / foldable / tablet |
 | Testing | JUnit 4, kotlinx-coroutines-test, Compose UI Test |
+| Release shrinking | R8 (`isMinifyEnabled`, `isShrinkResources`) with targeted ProGuard rules for JNI and kotlinx.serialization |
 | CI | GitHub Actions (unit tests on Ubuntu; NDK build & UI tests on macOS M1) |
 
 ## Project Structure
