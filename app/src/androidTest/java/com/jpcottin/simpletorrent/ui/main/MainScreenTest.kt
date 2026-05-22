@@ -1,4 +1,4 @@
-package com.jpcexample.simpletorrent.ui.main
+package com.jpcottin.simpletorrent.ui.main
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
@@ -9,10 +9,10 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
-import com.jpcexample.simpletorrent.data.CreateTorrentResult
-import com.jpcexample.simpletorrent.data.DataRepository
-import com.jpcexample.simpletorrent.data.PeerInfo
-import com.jpcexample.simpletorrent.data.TorrentInfo
+import com.jpcottin.simpletorrent.data.CreateTorrentResult
+import com.jpcottin.simpletorrent.data.DataRepository
+import com.jpcottin.simpletorrent.data.PeerInfo
+import com.jpcottin.simpletorrent.data.TorrentInfo
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Rule

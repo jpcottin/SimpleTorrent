@@ -1,4 +1,4 @@
-package com.jpcexample.simpletorrent
+package com.jpcottin.simpletorrent
 
 import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable

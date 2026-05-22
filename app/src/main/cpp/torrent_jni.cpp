@@ -155,7 +155,7 @@ static void save_all_resume_data() {
 extern "C" {
 
 JNIEXPORT void JNICALL
-Java_com_jpcexample_simpletorrent_data_TorrentManager_nativeInit(
+Java_com_jpcottin_simpletorrent_data_TorrentManager_nativeInit(
         JNIEnv* env, jobject /*thiz*/, jstring savePath, jstring statePath) {
     std::lock_guard<std::mutex> lock(g_mutex);
     if (g_session) return;
@@ -188,7 +188,7 @@ Java_com_jpcexample_simpletorrent_data_TorrentManager_nativeInit(
 }
 
 JNIEXPORT void JNICALL
-Java_com_jpcexample_simpletorrent_data_TorrentManager_nativeRelease(
+Java_com_jpcottin_simpletorrent_data_TorrentManager_nativeRelease(
         JNIEnv* /*env*/, jobject /*thiz*/) {
     std::lock_guard<std::mutex> lock(g_mutex);
     if (!g_session) return;
@@ -200,14 +200,14 @@ Java_com_jpcexample_simpletorrent_data_TorrentManager_nativeRelease(
 
 // Save resume data without destroying the session (safe to call from onStop)
 JNIEXPORT void JNICALL
-Java_com_jpcexample_simpletorrent_data_TorrentManager_nativeSaveResumeData(
+Java_com_jpcottin_simpletorrent_data_TorrentManager_nativeSaveResumeData(
         JNIEnv* /*env*/, jobject /*thiz*/) {
     std::lock_guard<std::mutex> lock(g_mutex);
     save_all_resume_data();
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_jpcexample_simpletorrent_data_TorrentManager_addMagnet(
+Java_com_jpcottin_simpletorrent_data_TorrentManager_addMagnet(
         JNIEnv* env, jobject /*thiz*/, jstring magnetUri) {
     std::lock_guard<std::mutex> lock(g_mutex);
     if (!g_session) return env->NewStringUTF("error: session not initialized");
@@ -229,7 +229,7 @@ Java_com_jpcexample_simpletorrent_data_TorrentManager_addMagnet(
 }
 
 JNIEXPORT void JNICALL
-Java_com_jpcexample_simpletorrent_data_TorrentManager_pauseTorrent(
+Java_com_jpcottin_simpletorrent_data_TorrentManager_pauseTorrent(
         JNIEnv* env, jobject /*thiz*/, jstring infoHash) {
     std::lock_guard<std::mutex> lock(g_mutex);
     const char* raw = env->GetStringUTFChars(infoHash, nullptr);
@@ -239,7 +239,7 @@ Java_com_jpcexample_simpletorrent_data_TorrentManager_pauseTorrent(
 }
 
 JNIEXPORT void JNICALL
-Java_com_jpcexample_simpletorrent_data_TorrentManager_resumeTorrent(
+Java_com_jpcottin_simpletorrent_data_TorrentManager_resumeTorrent(
         JNIEnv* env, jobject /*thiz*/, jstring infoHash) {
     std::lock_guard<std::mutex> lock(g_mutex);
     const char* raw = env->GetStringUTFChars(infoHash, nullptr);
@@ -249,7 +249,7 @@ Java_com_jpcexample_simpletorrent_data_TorrentManager_resumeTorrent(
 }
 
 JNIEXPORT void JNICALL
-Java_com_jpcexample_simpletorrent_data_TorrentManager_removeTorrent(
+Java_com_jpcottin_simpletorrent_data_TorrentManager_removeTorrent(
         JNIEnv* env, jobject /*thiz*/, jstring infoHash, jboolean deleteFiles) {
     std::lock_guard<std::mutex> lock(g_mutex);
     const char* raw = env->GetStringUTFChars(infoHash, nullptr);
@@ -267,7 +267,7 @@ Java_com_jpcexample_simpletorrent_data_TorrentManager_removeTorrent(
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_jpcexample_simpletorrent_data_TorrentManager_getTorrentsJson(
+Java_com_jpcottin_simpletorrent_data_TorrentManager_getTorrentsJson(
         JNIEnv* env, jobject /*thiz*/) {
     std::lock_guard<std::mutex> lock(g_mutex);
     if (!g_session) return env->NewStringUTF("[]");
@@ -353,7 +353,7 @@ Java_com_jpcexample_simpletorrent_data_TorrentManager_getTorrentsJson(
 // Add a torrent from a .torrent file on disk.
 // Returns "ok:<infohash>" or "error:<message>".
 JNIEXPORT jstring JNICALL
-Java_com_jpcexample_simpletorrent_data_TorrentManager_addTorrentFile(
+Java_com_jpcottin_simpletorrent_data_TorrentManager_addTorrentFile(
         JNIEnv* env, jobject /*thiz*/, jstring torrentPath) {
     std::lock_guard<std::mutex> lock(g_mutex);
     if (!g_session) return env->NewStringUTF("error: session not initialized");
@@ -383,7 +383,7 @@ Java_com_jpcexample_simpletorrent_data_TorrentManager_addTorrentFile(
 // Create a .torrent from a file or folder and seed it.
 // Returns JSON: {"name":"...","torrentFile":"...","magnetUri":"..."} or {"error":"..."}
 JNIEXPORT jstring JNICALL
-Java_com_jpcexample_simpletorrent_data_TorrentManager_createTorrent(
+Java_com_jpcottin_simpletorrent_data_TorrentManager_createTorrent(
         JNIEnv* env, jobject /*thiz*/, jstring sourcePath, jstring outputDir) {
     const char* src_c = env->GetStringUTFChars(sourcePath, nullptr);
     const char* out_c = env->GetStringUTFChars(outputDir,  nullptr);
@@ -463,7 +463,7 @@ Java_com_jpcexample_simpletorrent_data_TorrentManager_createTorrent(
 
 // Return the magnet URI for an existing torrent by info-hash, or "" if not found.
 JNIEXPORT jstring JNICALL
-Java_com_jpcexample_simpletorrent_data_TorrentManager_getMagnetUri(
+Java_com_jpcottin_simpletorrent_data_TorrentManager_getMagnetUri(
         JNIEnv* env, jobject /*thiz*/, jstring infoHash) {
     std::lock_guard<std::mutex> lock(g_mutex);
     const char* raw = env->GetStringUTFChars(infoHash, nullptr);
@@ -476,7 +476,7 @@ Java_com_jpcexample_simpletorrent_data_TorrentManager_getMagnetUri(
 // Write a .torrent file for the given info-hash into outputDir.
 // Returns the absolute path to the written file, or "" on failure (e.g. metadata not yet fetched).
 JNIEXPORT jstring JNICALL
-Java_com_jpcexample_simpletorrent_data_TorrentManager_saveTorrentFile(
+Java_com_jpcottin_simpletorrent_data_TorrentManager_saveTorrentFile(
         JNIEnv* env, jobject /*thiz*/, jstring infoHash, jstring outputDir) {
     std::lock_guard<std::mutex> lock(g_mutex);
     const char* hash_c = env->GetStringUTFChars(infoHash, nullptr);

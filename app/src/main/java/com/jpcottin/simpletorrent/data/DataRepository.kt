@@ -1,4 +1,4 @@
-package com.jpcexample.simpletorrent.data
+package com.jpcottin.simpletorrent.data
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow

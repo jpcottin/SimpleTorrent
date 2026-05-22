@@ -1,4 +1,4 @@
-package com.jpcexample.simpletorrent.ui.main
+package com.jpcottin.simpletorrent.ui.main
 
 import android.app.DownloadManager
 import android.content.ClipData
@@ -70,11 +70,11 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavKey
-import com.jpcexample.simpletorrent.data.DefaultDataRepository
-import com.jpcexample.simpletorrent.data.PeerInfo
-import com.jpcexample.simpletorrent.data.TorrentInfo
-import com.jpcexample.simpletorrent.data.TorrentManager
-import com.jpcexample.simpletorrent.theme.SimpleTorrentTheme
+import com.jpcottin.simpletorrent.data.DefaultDataRepository
+import com.jpcottin.simpletorrent.data.PeerInfo
+import com.jpcottin.simpletorrent.data.TorrentInfo
+import com.jpcottin.simpletorrent.data.TorrentManager
+import com.jpcottin.simpletorrent.theme.SimpleTorrentTheme
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

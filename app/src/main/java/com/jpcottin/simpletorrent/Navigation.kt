@@ -1,10 +1,10 @@
-package com.jpcexample.simpletorrent
+package com.jpcottin.simpletorrent
 
 import androidx.compose.runtime.Composable
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
-import com.jpcexample.simpletorrent.ui.main.MainScreen
+import com.jpcottin.simpletorrent.ui.main.MainScreen
 
 @Composable
 fun MainNavigation() {

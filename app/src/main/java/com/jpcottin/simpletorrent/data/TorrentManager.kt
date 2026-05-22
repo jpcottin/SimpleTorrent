@@ -1,4 +1,4 @@
-package com.jpcexample.simpletorrent.data
+package com.jpcottin.simpletorrent.data
 
 import android.content.Context
 import android.os.Build

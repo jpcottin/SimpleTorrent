@@ -1,4 +1,4 @@
-package com.jpcexample.simpletorrent.theme
+package com.jpcottin.simpletorrent.theme
 
 import androidx.compose.ui.graphics.Color
 
