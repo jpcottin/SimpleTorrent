@@ -18,8 +18,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.material3.Scaffold
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -182,44 +187,57 @@ fun MainScreen(
         )
     }
 
-    Column(modifier = modifier.padding(horizontal = 16.dp).padding(top = 16.dp)) {
-        MagnetInputBar(
-            value = magnetInput,
-            onValueChange = { magnetInput = it },
-            onAdd = {
-                if (magnetInput.isNotBlank()) {
-                    viewModel.addMagnet(magnetInput)
-                    magnetInput = ""
-                }
-            },
-            onCreateFile   = { fileLauncher.launch(arrayOf("*/*")) },
-            onCreateFolder = { folderLauncher.launch(null) },
-        )
+    Scaffold(
+        modifier = modifier,
+        contentWindowInsets = WindowInsets.safeDrawing,
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
+                .padding(horizontal = 16.dp)
+                .padding(top = 16.dp),
+        ) {
+            MagnetInputBar(
+                value = magnetInput,
+                onValueChange = { magnetInput = it },
+                onAdd = {
+                    if (magnetInput.isNotBlank()) {
+                        viewModel.addMagnet(magnetInput)
+                        magnetInput = ""
+                    }
+                },
+                onCreateFile   = { fileLauncher.launch(arrayOf("*/*")) },
+                onCreateFolder = { folderLauncher.launch(null) },
+            )
 
-        when (state) {
-            MainScreenUiState.Loading ->
-                CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
-            is MainScreenUiState.Error ->
-                Text("Error: ${(state as MainScreenUiState.Error).throwable.message}")
-            is MainScreenUiState.Success -> {
-                val torrents = (state as MainScreenUiState.Success).torrents
-                if (torrents.isEmpty()) {
-                    Text(
-                        text = "No active torrents.\nPaste a magnet link above to start.",
-                        modifier = Modifier.padding(top = 24.dp),
-                    )
-                } else {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(bottom = 16.dp),
-                    ) {
-                        items(torrents, key = { it.infoHash }) { torrent ->
-                            TorrentCard(
-                                torrent = torrent,
-                                onPause = { viewModel.pause(torrent.infoHash) },
-                                onResume = { viewModel.resume(torrent.infoHash) },
-                                onRemove = { viewModel.remove(torrent.infoHash, deleteFiles = true) },
-                            )
+            when (state) {
+                MainScreenUiState.Loading ->
+                    CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
+                is MainScreenUiState.Error ->
+                    Text("Error: ${(state as MainScreenUiState.Error).throwable.message}")
+                is MainScreenUiState.Success -> {
+                    val torrents = (state as MainScreenUiState.Success).torrents
+                    if (torrents.isEmpty()) {
+                        Text(
+                            text = "No active torrents.\nPaste a magnet link above to start.",
+                            modifier = Modifier.padding(top = 24.dp),
+                        )
+                    } else {
+                        LazyVerticalGrid(
+                            columns = GridCells.Adaptive(300.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            contentPadding = PaddingValues(bottom = 16.dp),
+                        ) {
+                            items(torrents, key = { it.infoHash }) { torrent ->
+                                TorrentCard(
+                                    torrent = torrent,
+                                    onPause = { viewModel.pause(torrent.infoHash) },
+                                    onResume = { viewModel.resume(torrent.infoHash) },
+                                    onRemove = { viewModel.remove(torrent.infoHash, deleteFiles = true) },
+                                )
+                            }
                         }
                     }
                 }
