@@ -1,5 +1,5 @@
 # Keep TorrentManager native (JNI) methods so R8 doesn't rename them
--keep class com.jpcexample.simpletorrent.data.TorrentManager {
+-keep class com.jpcottin.simpletorrent.data.TorrentManager {
     native <methods>;
 }
 

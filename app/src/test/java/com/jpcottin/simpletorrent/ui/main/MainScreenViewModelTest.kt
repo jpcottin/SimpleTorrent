@@ -1,8 +1,8 @@
-package com.jpcexample.simpletorrent.ui.main
+package com.jpcottin.simpletorrent.ui.main
 
-import com.jpcexample.simpletorrent.data.CreateTorrentResult
-import com.jpcexample.simpletorrent.data.DataRepository
-import com.jpcexample.simpletorrent.data.TorrentInfo
+import com.jpcottin.simpletorrent.data.CreateTorrentResult
+import com.jpcottin.simpletorrent.data.DataRepository
+import com.jpcottin.simpletorrent.data.TorrentInfo
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertTrue
 import kotlinx.coroutines.Dispatchers

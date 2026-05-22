@@ -1,13 +1,13 @@
-package com.jpcexample.simpletorrent.ui.main
+package com.jpcottin.simpletorrent.ui.main
 
 import android.content.ContentResolver
 import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.jpcexample.simpletorrent.data.CreateTorrentResult
-import com.jpcexample.simpletorrent.data.DataRepository
-import com.jpcexample.simpletorrent.data.TorrentInfo
+import com.jpcottin.simpletorrent.data.CreateTorrentResult
+import com.jpcottin.simpletorrent.data.DataRepository
+import com.jpcottin.simpletorrent.data.TorrentInfo
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow

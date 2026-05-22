@@ -1,4 +1,4 @@
-package com.jpcexample.simpletorrent
+package com.jpcottin.simpletorrent
 
 import android.content.Intent
 import android.net.Uri
@@ -18,8 +18,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import com.jpcexample.simpletorrent.data.TorrentManager
-import com.jpcexample.simpletorrent.theme.SimpleTorrentTheme
+import com.jpcottin.simpletorrent.data.TorrentManager
+import com.jpcottin.simpletorrent.theme.SimpleTorrentTheme
 
 class MainActivity : ComponentActivity() {
 
