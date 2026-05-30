@@ -7,7 +7,7 @@ plugins {
 android {
     namespace = "com.jpcottin.simpletorrent"
     compileSdk = 36
-    ndkVersion = "28.2.13676358"
+    ndkVersion = "29.0.14206865"
     defaultConfig {
         applicationId = "com.jpcottin.simpletorrent"
         minSdk = 24

@@ -30,7 +30,7 @@ https://github.com/user-attachments/assets/6182efdb-9862-47ee-9fa7-011a64ee87eb
 | Layer | Technology |
 |---|---|
 | BitTorrent engine | [libtorrent-rasterbar](https://libtorrent.org) RC_2_0 (C++17, BSD-3-Clause) |
-| Native bridge | Android NDK r28, JNI (`torrent_jni.cpp`) |
+| Native bridge | Android NDK r29, JNI (`torrent_jni.cpp`) |
 | Build system | CMake 3.22, Gradle AGP 9.0.1 |
 | Language | Kotlin 2.3.20 |
 | UI | Jetpack Compose (BOM 2026.03.01), Material3 |
@@ -107,7 +107,7 @@ NAT (e.g. two emulators sharing a host's IP).
 | Tool | Version |
 |---|---|
 | Android Studio | Meerkat or newer |
-| NDK | r28 (`28.2.13676358`) |
+| NDK | r29 (`29.0.14206865`) |
 | CMake | 3.22.1 |
 | Boost headers | 1.88 or newer (header-only; needed by libtorrent) |
 | JDK | 17 |
