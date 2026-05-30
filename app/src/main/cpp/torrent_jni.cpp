@@ -56,9 +56,17 @@ static std::string json_str(const std::string& s) {
     std::string out;
     out.reserve(s.size() + 2);
     out += '"';
-    for (char c : s) {
-        if (c == '"' || c == '\\') out += '\\';
-        out += c;
+    for (unsigned char c : s) {
+        if      (c == '"')  { out += "\\\""; }
+        else if (c == '\\') { out += "\\\\"; }
+        else if (c == '\n') { out += "\\n";  }
+        else if (c == '\r') { out += "\\r";  }
+        else if (c == '\t') { out += "\\t";  }
+        else if (c < 0x20)  {
+            char buf[7];
+            std::snprintf(buf, sizeof(buf), "\\u%04x", c);
+            out += buf;
+        } else { out += static_cast<char>(c); }
     }
     out += '"';
     return out;
@@ -353,8 +361,30 @@ Java_com_jpcottin_simpletorrent_data_TorrentManager_getTorrentsJson(
                  << "\"progress\":" << p.progress
                  << "}";
         }
-        json << "]"
-             << "}";
+        json << "],"
+             << "\"allTimeUploadBytes\":"   << st.all_time_upload   << ","
+             << "\"allTimeDownloadBytes\":" << st.all_time_download  << ","
+             << "\"fileList\":[";
+        {
+            auto ti = h.torrent_file();
+            if (ti && ti->num_files() > 0) {
+                std::vector<int64_t> fp;
+                h.file_progress(fp);
+                const auto& fs = ti->files();
+                for (int fi = 0; fi < fs.num_files(); ++fi) {
+                    if (fi > 0) json << ",";
+                    std::string fname = fs.file_path(lt::file_index_t{fi});
+                    int64_t fsize = fs.file_size(lt::file_index_t{fi});
+                    int64_t fdone = (fi < static_cast<int>(fp.size())) ? fp[fi] : 0;
+                    json << "{"
+                         << "\"name\":" << json_str(fname) << ","
+                         << "\"size\":" << fsize           << ","
+                         << "\"done\":" << fdone
+                         << "}";
+                }
+            }
+        }
+        json << "]}";
     }
     json << "]";
     return env->NewStringUTF(json.str().c_str());

@@ -30,6 +30,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FolderOpen
@@ -63,6 +64,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -71,6 +73,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavKey
 import com.jpcottin.simpletorrent.data.DefaultDataRepository
+import com.jpcottin.simpletorrent.data.FileInfo
 import com.jpcottin.simpletorrent.data.PeerInfo
 import com.jpcottin.simpletorrent.data.TorrentInfo
 import com.jpcottin.simpletorrent.data.TorrentManager
@@ -318,6 +321,7 @@ private fun TorrentCard(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showShareMenu by remember { mutableStateOf(false) }
     var showPeers by remember { mutableStateOf(false) }
+    var showFiles by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val pieceHaveColor   = androidx.compose.material3.MaterialTheme.colorScheme.primary
@@ -379,8 +383,16 @@ private fun TorrentCard(
             if (torrent.totalWantedBytes > 0) {
                 val sizeText = "${formatSize(torrent.totalDoneBytes)} / ${formatSize(torrent.totalWantedBytes)}"
                 val etaText = formatEta(torrent.etaSecs)
+                val ratioText = if (torrent.allTimeDownloadBytes > 0)
+                    "ratio ${"%.2f".format(torrent.allTimeUploadBytes.toFloat() / torrent.allTimeDownloadBytes)}"
+                else ""
+                val parts = listOfNotNull(
+                    sizeText,
+                    etaText.takeIf { it.isNotEmpty() }?.let { "ETA $it" },
+                    ratioText.takeIf { it.isNotEmpty() },
+                )
                 Text(
-                    text = if (etaText.isNotEmpty()) "$sizeText  •  ETA $etaText" else sizeText,
+                    text = parts.joinToString("  •  "),
                     fontSize = 11.sp,
                     fontFamily = FontFamily.Monospace,
                     modifier = Modifier.padding(top = 1.dp),
@@ -400,6 +412,19 @@ private fun TorrentCard(
                 } else {
                     IconButton(onClick = onPause) {
                         Icon(Icons.Filled.Pause, contentDescription = "Pause")
+                    }
+                }
+                // Files toggle (only for multi-file torrents)
+                if (torrent.fileList.size > 1) {
+                    IconButton(onClick = { showFiles = !showFiles }) {
+                        Icon(
+                            Icons.Filled.Description,
+                            contentDescription = if (showFiles) "Hide files" else "Show files",
+                            tint = if (showFiles)
+                                androidx.compose.material3.MaterialTheme.colorScheme.primary
+                            else
+                                androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
                 // Peers toggle
@@ -466,9 +491,47 @@ private fun TorrentCard(
                 }
             }
 
+            // Collapsible file list
+            AnimatedVisibility(visible = showFiles && torrent.fileList.size > 1) {
+                FileList(files = torrent.fileList)
+            }
             // Collapsible peer list
             AnimatedVisibility(visible = showPeers) {
                 PeerList(peers = torrent.peerList)
+            }
+        }
+    }
+}
+
+@Composable
+private fun FileList(files: List<FileInfo>, modifier: Modifier = Modifier) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        HorizontalDivider()
+        files.forEach { file ->
+            val progress = if (file.size > 0) (file.done.toFloat() / file.size).coerceIn(0f, 1f) else 0f
+            Column(modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = file.name,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f).padding(end = 8.dp),
+                    )
+                    Text(
+                        text = "${formatSize(file.size)}  ${(progress * 100).toInt()}%",
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                }
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                )
             }
         }
     }
@@ -517,9 +580,14 @@ private fun PeerList(peers: List<PeerInfo>, modifier: Modifier = Modifier) {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(name = "Phone",    device = Devices.PHONE,    showBackground = true)
+@Preview(name = "Foldable", device = Devices.FOLDABLE, showBackground = true)
+@Preview(name = "Tablet",   device = Devices.TABLET,   showBackground = true)
+annotation class FormFactorPreviews
+
+@FormFactorPreviews
 @Composable
-private fun TorrentCardPreview() {
+private fun TorrentCardDownloadingPreview() {
     SimpleTorrentTheme {
         TorrentCard(
             torrent = TorrentInfo(
@@ -529,21 +597,63 @@ private fun TorrentCardPreview() {
                     PeerInfo("192.168.1.10:6881", 512, 64, 0.35f),
                     PeerInfo("10.0.0.5:51413", 128, 0, 0.80f),
                 ),
-                totalWantedBytes = 1_471_026_298L,
-                totalDoneBytes   = 617_831_044L,
-                etaSecs          = 822L,
+                totalWantedBytes    = 1_471_026_298L,
+                totalDoneBytes      = 617_831_044L,
+                etaSecs             = 822L,
+                allTimeUploadBytes  = 12_345_678L,
+                allTimeDownloadBytes = 617_831_044L,
             ),
             onPause = {}, onResume = {}, onRemove = {},
         )
     }
 }
 
-@Preview(showBackground = true)
+@Preview(name = "Paused", showBackground = true)
 @Composable
 private fun TorrentCardPausedPreview() {
     SimpleTorrentTheme {
         TorrentCard(
             torrent = TorrentInfo("abc123", "Big Buck Bunny", "downloading", true, 0.42f, 0, 0, 0),
+            onPause = {}, onResume = {}, onRemove = {},
+        )
+    }
+}
+
+@Preview(name = "Seeding with ratio", showBackground = true)
+@Composable
+private fun TorrentCardSeedingPreview() {
+    SimpleTorrentTheme {
+        TorrentCard(
+            torrent = TorrentInfo(
+                "abc123", "Big Buck Bunny", "seeding", false, 1f, 0, 512, 3,
+                totalWantedBytes     = 276_482_048L,
+                totalDoneBytes       = 276_482_048L,
+                allTimeUploadBytes   = 345_602_560L,
+                allTimeDownloadBytes = 276_482_048L,
+            ),
+            onPause = {}, onResume = {}, onRemove = {},
+        )
+    }
+}
+
+@Preview(name = "Multi-file torrent", showBackground = true)
+@Composable
+private fun TorrentCardMultiFilePreview() {
+    SimpleTorrentTheme {
+        TorrentCard(
+            torrent = TorrentInfo(
+                "def456", "Cosmos Laundromat", "downloading", false, 0.27f, 2048, 64, 12,
+                totalWantedBytes     = 3_758_096_384L,
+                totalDoneBytes       = 1_014_685_022L,
+                etaSecs              = 3_240L,
+                allTimeUploadBytes   = 52_428_800L,
+                allTimeDownloadBytes = 1_014_685_022L,
+                fileList = listOf(
+                    FileInfo("cosmos_laundromat_4k.mkv", 3_650_000_000L, 980_000_000L),
+                    FileInfo("subtitles_en.srt",              45_000L,        45_000L),
+                    FileInfo("subtitles_fr.srt",              48_000L,        48_000L),
+                ),
+            ),
             onPause = {}, onResume = {}, onRemove = {},
         )
     }
