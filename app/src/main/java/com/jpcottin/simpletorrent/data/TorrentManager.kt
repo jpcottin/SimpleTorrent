@@ -101,6 +101,7 @@ object TorrentManager {
     external fun pauseTorrent(infoHash: String)
     external fun resumeTorrent(infoHash: String)
     external fun removeTorrent(infoHash: String, deleteFiles: Boolean)
+    external fun setSequentialDownload(infoHash: String, enabled: Boolean)
     external fun getMagnetUri(infoHash: String): String
     external fun saveTorrentFile(infoHash: String, outputDir: String): String
     private external fun createTorrent(sourcePath: String, outputDir: String): String
