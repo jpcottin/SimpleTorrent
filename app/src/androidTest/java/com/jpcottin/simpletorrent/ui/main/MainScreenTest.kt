@@ -11,6 +11,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.jpcottin.simpletorrent.data.CreateTorrentResult
 import com.jpcottin.simpletorrent.data.DataRepository
+import com.jpcottin.simpletorrent.data.FileInfo
 import com.jpcottin.simpletorrent.data.PeerInfo
 import com.jpcottin.simpletorrent.data.TorrentInfo
 import kotlinx.coroutines.flow.Flow
@@ -189,7 +190,7 @@ class MainScreenTest {
                 etaSecs          = -1L,
             )
         ))
-        rule.onNodeWithText("263.6 MB / 263.6 MB", substring = true).assertIsDisplayed()
+        rule.onNodeWithText("263.7 MB / 263.7 MB", substring = true).assertIsDisplayed()
         rule.onNodeWithText("ETA", substring = true).assertDoesNotExist()
     }
 
@@ -197,6 +198,80 @@ class MainScreenTest {
     fun torrentCard_hiddesSizeLine_whenTotalUnknown() {
         launch(torrents = listOf(fakeTorrent()))
         rule.onNodeWithText(" / ", substring = true).assertDoesNotExist()
+    }
+
+    // ── upload ratio ──────────────────────────────────────────────────────────
+
+    @Test
+    fun torrentCard_showsRatio_whenDownloadBytesKnown() {
+        launch(torrents = listOf(
+            fakeTorrent().copy(
+                totalWantedBytes     = 276_482_048L,
+                totalDoneBytes       = 276_482_048L,
+                allTimeUploadBytes   = 345_602_560L,
+                allTimeDownloadBytes = 276_482_048L,
+            )
+        ))
+        rule.onNodeWithText("ratio", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun torrentCard_hidesRatio_whenNoDownloadBytes() {
+        launch(torrents = listOf(fakeTorrent()))
+        rule.onNodeWithText("ratio", substring = true).assertDoesNotExist()
+    }
+
+    // ── file list ─────────────────────────────────────────────────────────────
+
+    @Test
+    fun torrentCard_showsFileListButton_forMultiFileTorrent() {
+        launch(torrents = listOf(
+            fakeTorrent().copy(
+                fileList = listOf(
+                    FileInfo("video.mp4", 1_000_000L, 1_000_000L),
+                    FileInfo("subtitle.srt", 10_000L, 10_000L),
+                )
+            )
+        ))
+        rule.onNodeWithContentDescription("Show files").assertIsDisplayed()
+    }
+
+    @Test
+    fun torrentCard_hidesFileListButton_forSingleFileTorrent() {
+        launch(torrents = listOf(
+            fakeTorrent().copy(fileList = listOf(FileInfo("video.mp4", 1_000_000L, 500_000L)))
+        ))
+        rule.onNodeWithContentDescription("Show files").assertDoesNotExist()
+    }
+
+    @Test
+    fun torrentCard_fileListToggle_showsFileNames() {
+        launch(torrents = listOf(
+            fakeTorrent().copy(
+                fileList = listOf(
+                    FileInfo("big_buck_bunny.mp4", 276_000_000L, 276_000_000L),
+                    FileInfo("poster.jpg", 303_000L, 303_000L),
+                )
+            )
+        ))
+        rule.onNodeWithContentDescription("Show files").performClick()
+        rule.onNodeWithText("big_buck_bunny.mp4", substring = true).assertIsDisplayed()
+        rule.onNodeWithText("poster.jpg", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun torrentCard_fileListToggle_hidesFiles_whenCollapsed() {
+        launch(torrents = listOf(
+            fakeTorrent().copy(
+                fileList = listOf(
+                    FileInfo("video.mp4", 1_000_000L, 1_000_000L),
+                    FileInfo("subtitle.srt", 10_000L, 10_000L),
+                )
+            )
+        ))
+        rule.onNodeWithContentDescription("Show files").performClick()
+        rule.onNodeWithContentDescription("Hide files").performClick()
+        rule.onNodeWithText("video.mp4", substring = true).assertDoesNotExist()
     }
 
     // ── multiple torrents ─────────────────────────────────────────────────────

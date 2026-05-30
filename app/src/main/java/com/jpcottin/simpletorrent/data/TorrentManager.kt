@@ -9,6 +9,13 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 @Serializable
+data class FileInfo(
+    val name: String,
+    val size: Long,
+    val done: Long,
+)
+
+@Serializable
 data class PeerInfo(
     val ip: String,
     val dlKbs: Int,
@@ -31,6 +38,9 @@ data class TorrentInfo(
     val totalWantedBytes: Long = 0L,
     val totalDoneBytes: Long = 0L,
     val etaSecs: Long = -1L,
+    val allTimeUploadBytes: Long = 0L,
+    val allTimeDownloadBytes: Long = 0L,
+    val fileList: List<FileInfo> = emptyList(),
 )
 
 sealed interface CreateTorrentResult {
