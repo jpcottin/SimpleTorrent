@@ -58,6 +58,9 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        // Must save before release: the onStop coroutine races with nativeRelease()
+        // and may lose if nativeRelease() nulls g_session first.
+        TorrentManager.nativeSaveResumeData()
         TorrentManager.nativeRelease()
         super.onDestroy()
     }

@@ -165,6 +165,40 @@ class MainScreenTest {
         rule.onNodeWithText("Magnet link", substring = true).assertIsDisplayed()
     }
 
+    // ── size / ETA ────────────────────────────────────────────────────────────
+
+    @Test
+    fun torrentCard_showsSizeAndEta_whenDownloading() {
+        launch(torrents = listOf(
+            fakeTorrent().copy(
+                totalWantedBytes = 1_471_026_298L,
+                totalDoneBytes   = 276_482_048L,
+                etaSecs          = 222L,
+            )
+        ))
+        rule.onNodeWithText("263.7 MB / 1.37 GB", substring = true).assertIsDisplayed()
+        rule.onNodeWithText("ETA 3m 42s", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun torrentCard_showsSizeOnly_whenSeeding() {
+        launch(torrents = listOf(
+            fakeTorrent(state = "seeding").copy(
+                totalWantedBytes = 276_482_048L,
+                totalDoneBytes   = 276_482_048L,
+                etaSecs          = -1L,
+            )
+        ))
+        rule.onNodeWithText("263.6 MB / 263.6 MB", substring = true).assertIsDisplayed()
+        rule.onNodeWithText("ETA", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun torrentCard_hiddesSizeLine_whenTotalUnknown() {
+        launch(torrents = listOf(fakeTorrent()))
+        rule.onNodeWithText(" / ", substring = true).assertDoesNotExist()
+    }
+
     // ── multiple torrents ─────────────────────────────────────────────────────
 
     @Test

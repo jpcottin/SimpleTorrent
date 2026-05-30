@@ -287,6 +287,13 @@ Java_com_jpcottin_simpletorrent_data_TorrentManager_getTorrentsJson(
         if (!first) json << ",";
         first = false;
 
+        int64_t eta_secs = -1;
+        if (!paused && st.state == lt::torrent_status::downloading && st.download_rate > 0) {
+            int64_t remaining = st.total_wanted - st.total_wanted_done;
+            if (remaining > 0) eta_secs = remaining / st.download_rate;
+            else eta_secs = 0;
+        }
+
         std::vector<lt::peer_info> peer_vec;
         h.get_peer_info(peer_vec);
 
@@ -328,8 +335,11 @@ Java_com_jpcottin_simpletorrent_data_TorrentManager_getTorrentsJson(
              << "\"progress\":"   << st.progress                     << ","
              << "\"dlRateKbs\":"  << (st.download_rate / 1024)       << ","
              << "\"ulRateKbs\":"  << (st.upload_rate   / 1024)       << ","
-             << "\"peers\":"      << st.num_peers                    << ","
-             << "\"piecesMap\":"  << json_str(pieces_map)            << ","
+             << "\"peers\":"            << st.num_peers                    << ","
+             << "\"totalWantedBytes\":" << (int64_t)st.total_wanted        << ","
+             << "\"totalDoneBytes\":"   << (int64_t)st.total_wanted_done   << ","
+             << "\"etaSecs\":"          << eta_secs                        << ","
+             << "\"piecesMap\":"        << json_str(pieces_map)            << ","
              << "\"peerList\":[";
         for (size_t i = 0; i < top; ++i) {
             if (i > 0) json << ",";

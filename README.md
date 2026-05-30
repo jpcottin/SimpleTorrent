@@ -9,6 +9,7 @@ Android NDK and the libtorrent-rasterbar C++ library.
 - Create `.torrent` files from any file or folder on the device and seed them immediately
 - Real-time piece-map visualization (missing / downloaded / actively transferring)
 - Collapsible per-torrent peer list (top 5 by download speed, refreshed every 3 s)
+- ETA and total size display on each torrent card (e.g. `263.6 MB / 1.37 GB  •  ETA 3m 42s`)
 - Pause, resume, and delete torrents (with optional file removal)
 - Persistent sessions — resume data is saved on `onStop` and restored on next launch
 - Share `.torrent` files to other clients via the system share sheet

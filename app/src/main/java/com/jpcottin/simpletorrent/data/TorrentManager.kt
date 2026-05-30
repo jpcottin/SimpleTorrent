@@ -28,6 +28,9 @@ data class TorrentInfo(
     val peers: Int,
     val piecesMap: String = "",
     val peerList: List<PeerInfo> = emptyList(),
+    val totalWantedBytes: Long = 0L,
+    val totalDoneBytes: Long = 0L,
+    val etaSecs: Long = -1L,
 )
 
 sealed interface CreateTorrentResult {

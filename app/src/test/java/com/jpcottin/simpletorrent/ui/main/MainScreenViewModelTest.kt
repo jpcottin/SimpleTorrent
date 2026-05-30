@@ -119,6 +119,20 @@ class MainScreenViewModelTest {
         assertEquals(CreateState.Idle, vm.createState.value)
     }
 
+    // ── formatSize ────────────────────────────────────────────────────────────
+
+    @Test fun formatSize_bytes()     { assertEquals("512 B",    formatSize(512)) }
+    @Test fun formatSize_kilobytes() { assertEquals("1.5 KB",   formatSize(1_536)) }
+    @Test fun formatSize_megabytes() { assertEquals("263.7 MB", formatSize(276_482_048)) }
+    @Test fun formatSize_gigabytes() { assertEquals("1.37 GB",  formatSize(1_471_026_298)) }
+
+    // ── formatEta ─────────────────────────────────────────────────────────────
+
+    @Test fun formatEta_unknown()    { assertEquals("",       formatEta(-1)) }
+    @Test fun formatEta_seconds()    { assertEquals("45s",    formatEta(45)) }
+    @Test fun formatEta_minutes()    { assertEquals("3m 42s", formatEta(222)) }
+    @Test fun formatEta_hours()      { assertEquals("1h 22m", formatEta(4_920)) }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private fun viewModel(repo: FakeRepository = FakeRepository()) =
