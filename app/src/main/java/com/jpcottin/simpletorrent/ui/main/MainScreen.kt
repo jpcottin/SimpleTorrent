@@ -293,6 +293,20 @@ private fun MagnetInputBar(
     }
 }
 
+internal fun formatSize(bytes: Long): String = when {
+    bytes < 1_024L              -> "$bytes B"
+    bytes < 1_024L * 1_024      -> "%.1f KB".format(bytes / 1_024.0)
+    bytes < 1_024L * 1_024 * 1_024 -> "%.1f MB".format(bytes / (1_024.0 * 1_024))
+    else                        -> "%.2f GB".format(bytes / (1_024.0 * 1_024 * 1_024))
+}
+
+internal fun formatEta(seconds: Long): String = when {
+    seconds < 0     -> ""
+    seconds < 60    -> "${seconds}s"
+    seconds < 3_600 -> "${seconds / 60}m ${seconds % 60}s"
+    else            -> "${seconds / 3_600}h ${(seconds % 3_600) / 60}m"
+}
+
 @Composable
 private fun TorrentCard(
     torrent: TorrentInfo,
@@ -362,6 +376,16 @@ private fun TorrentCard(
                 fontFamily = FontFamily.Monospace,
                 modifier = Modifier.padding(top = 4.dp),
             )
+            if (torrent.totalWantedBytes > 0) {
+                val sizeText = "${formatSize(torrent.totalDoneBytes)} / ${formatSize(torrent.totalWantedBytes)}"
+                val etaText = formatEta(torrent.etaSecs)
+                Text(
+                    text = if (etaText.isNotEmpty()) "$sizeText  •  ETA $etaText" else sizeText,
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.padding(top = 1.dp),
+                )
+            }
 
             // Action buttons
             Row(
@@ -505,6 +529,9 @@ private fun TorrentCardPreview() {
                     PeerInfo("192.168.1.10:6881", 512, 64, 0.35f),
                     PeerInfo("10.0.0.5:51413", 128, 0, 0.80f),
                 ),
+                totalWantedBytes = 1_471_026_298L,
+                totalDoneBytes   = 617_831_044L,
+                etaSecs          = 822L,
             ),
             onPause = {}, onResume = {}, onRemove = {},
         )
