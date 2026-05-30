@@ -44,6 +44,11 @@ if(DEFINED BOOST_INCLUDE_DIR)
     target_compile_options(simpletorrent     PRIVATE "-I${BOOST_INCLUDE_DIR}")
 endif()
 
+# Clang 21 (NDK r29) triggers BOOST_ASIO_HAS_STD_ALIGNED_ALLOC auto-detection but the
+# Android sysroot doesn't expose std::aligned_alloc reliably; use Boost's own impl.
+target_compile_options(torrent-rasterbar PRIVATE "-DBOOST_ASIO_DISABLE_STD_ALIGNED_ALLOC")
+target_compile_options(simpletorrent     PRIVATE "-DBOOST_ASIO_DISABLE_STD_ALIGNED_ALLOC")
+
 target_link_libraries(simpletorrent
     PRIVATE
         torrent-rasterbar
