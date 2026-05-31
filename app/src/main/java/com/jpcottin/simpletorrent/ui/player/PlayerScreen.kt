@@ -99,7 +99,7 @@ fun PlayerScreen(filePath: String, title: String, onBack: () -> Unit) {
                             @Suppress("DEPRECATION")
                             val format = group.getTrackFormat(j)
                             val label = format.language?.let { lang ->
-                                Locale(lang).displayLanguage.takeIf { it.isNotEmpty() } ?: lang
+                                Locale.forLanguageTag(lang).displayLanguage.takeIf { it.isNotEmpty() } ?: lang
                             } ?: format.label ?: "Track ${j + 1}"
                             audioTrackOptions.add(AudioTrackOption(group, j, label))
                         }
