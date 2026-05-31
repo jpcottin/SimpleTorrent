@@ -11,7 +11,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ClosedCaption
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
@@ -38,6 +41,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.jpcottin.simpletorrent.theme.SimpleTorrentTheme
 import java.io.File
+import java.util.Locale
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
@@ -47,11 +51,40 @@ fun PlayerScreen(filePath: String, title: String, onBack: () -> Unit) {
     val isPreview = LocalInspectionMode.current
     val prefs = remember { context.getSharedPreferences("player_positions", Context.MODE_PRIVATE) }
     var isBuffering by remember { mutableStateOf(true) }
+    var showSubtitleMenu by remember { mutableStateOf(false) }
+    var subtitles by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
 
     val player = remember {
         if (isPreview) return@remember null
+        val videoFile = File(filePath)
+        val videoDir = videoFile.parentFile
+        val baseNameNoExt = videoFile.nameWithoutExtension
+
+        // Find all .srt files in the same directory
+        val srtConfigs = videoDir?.listFiles { file ->
+            file.isFile && file.extension == "srt"
+        }?.mapNotNull { srtFile ->
+            // Extract language code from filename pattern: *_xx.srt or subtitle_xx.srt
+            val match = Regex("([a-z]{2})\\.srt$").find(srtFile.name)
+            if (match != null) {
+                val languageCode = match.groupValues[1]
+                val displayLanguage = Locale(languageCode).displayLanguage
+                subtitles = subtitles + (languageCode to displayLanguage)
+                MediaItem.SubtitleConfiguration.Builder(Uri.fromFile(srtFile))
+                    .setMimeType("application/x-subrip")
+                    .setLanguage(languageCode)
+                    .setLabel(displayLanguage)
+                    .build()
+            } else null
+        } ?: emptyList()
+
         ExoPlayer.Builder(context).build().apply {
-            setMediaItem(MediaItem.fromUri(Uri.fromFile(File(filePath))))
+            val mediaItem = MediaItem.Builder()
+                .setUri(Uri.fromFile(videoFile))
+                .setSubtitleConfigurations(srtConfigs)
+                .build()
+
+            setMediaItem(mediaItem)
             prepare()
             val savedPosition = prefs.getLong(filePath, 0L)
             if (savedPosition > 0L) seekTo(savedPosition)
@@ -130,6 +163,46 @@ fun PlayerScreen(filePath: String, title: String, onBack: () -> Unit) {
                 contentDescription = "Back",
                 tint = Color.White,
             )
+        }
+        if (subtitles.isNotEmpty() && player != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(WindowInsets.safeDrawing.asPaddingValues()),
+            ) {
+                IconButton(onClick = { showSubtitleMenu = !showSubtitleMenu }) {
+                    Icon(
+                        Icons.Default.ClosedCaption,
+                        contentDescription = "Subtitles",
+                        tint = Color.White,
+                    )
+                }
+                DropdownMenu(
+                    expanded = showSubtitleMenu,
+                    onDismissRequest = { showSubtitleMenu = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("None") },
+                        onClick = {
+                            player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                                .setPreferredTextLanguages()
+                                .build()
+                            showSubtitleMenu = false
+                        },
+                    )
+                    subtitles.forEach { (languageCode, language) ->
+                        DropdownMenuItem(
+                            text = { Text(language) },
+                            onClick = {
+                                player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                                    .setPreferredTextLanguages(languageCode)
+                                    .build()
+                                showSubtitleMenu = false
+                            },
+                        )
+                    }
+                }
+            }
         }
     }
 }

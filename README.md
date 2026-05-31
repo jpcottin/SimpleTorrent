@@ -12,6 +12,7 @@ Android NDK and the libtorrent-rasterbar C++ library.
 - Collapsible per-file progress list — file name, size, and individual download progress bar
 - ETA, total size, and upload ratio on each card (e.g. `151.7 MB / 263.6 MB  •  ETA 27s  •  ratio 0.42`)
 - Sequential download + in-app ExoPlayer — tap Play (≥ 5 % downloaded) to watch before the file is complete; position is remembered across sessions and cleared when the torrent is deleted
+- Multi-language subtitle support — automatically detects `.srt` files and provides a language selector in the player UI
 - Pause, resume, and delete torrents (with optional file removal)
 - Persistent sessions — resume data is saved on `onStop` and restored on next launch
 - Share `.torrent` files to other clients via the system share sheet
@@ -24,9 +25,9 @@ https://github.com/user-attachments/assets/6182efdb-9862-47ee-9fa7-011a64ee87eb
 
 ## Screenshots
 
-| Torrent list with file list expanded and active download |
-|---|
-| <img src="screenshots/main.png" width="320" alt="Torrent list: Big Buck Bunny seeding with file list expanded showing Play button on the mp4, Sintel seeding, and Cosmos Laundromat downloading at 2.9 MB/s with 25 peers, ETA and ratio"> |
+| Torrent list with file list expanded and active download | ExoPlayer with multi-language subtitles |
+|---|---|
+| <img src="screenshots/main.png" width="320" alt="Torrent list: Big Buck Bunny seeding with file list expanded showing Play button on the mp4, Sintel seeding, and Cosmos Laundromat downloading at 2.9 MB/s with 25 peers, ETA and ratio"> | <img src="screenshots/player_subtitles.png" width="320" alt="Video playback in fullscreen with German subtitles displayed. Subtitle selector dropdown open on the right showing language options: None, German, English, Spanish, French, Italian, Dutch"> |
 
 ## Technical Stack
 
@@ -71,7 +72,7 @@ SimpleTorrent/
 │   │       │   ├── MainScreen.kt       # Compose UI: cards, piece map, file list, peer list
 │   │       │   └── MainScreenViewModel.kt
 │   │       └── player/
-│   │           └── PlayerScreen.kt     # ExoPlayer fullscreen player; position saved per file path
+│   │           └── PlayerScreen.kt     # ExoPlayer fullscreen player; position saved per file path; auto-detects and loads multi-language subtitles
 │   └── res/
 │       ├── drawable/               # Adaptive icon (vector magnet)
 │       └── xml/file_provider_paths.xml
