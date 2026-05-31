@@ -1,5 +1,6 @@
 package com.jpcottin.simpletorrent.theme
 
+import android.annotation.SuppressLint
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +30,7 @@ private val LightColorScheme =
     */
   )
 
+@SuppressLint("NewApi")
 @Composable
 fun SimpleTorrentTheme(
   darkTheme: Boolean = isSystemInDarkTheme(),

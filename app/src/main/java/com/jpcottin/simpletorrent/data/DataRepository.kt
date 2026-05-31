@@ -1,5 +1,6 @@
 package com.jpcottin.simpletorrent.data
 
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -19,7 +20,7 @@ class DefaultDataRepository : DataRepository {
     override val torrents: Flow<List<TorrentInfo>> = flow {
         while (true) {
             emit(TorrentManager.getTorrents())
-            delay(3_000L)
+            delay(3.seconds)
         }
     }
 

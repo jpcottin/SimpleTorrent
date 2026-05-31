@@ -15,43 +15,46 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.material3.Scaffold
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.PlaylistAdd
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -74,9 +77,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import androidx.core.content.edit
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavKey
+import com.jpcottin.simpletorrent.Player
 import com.jpcottin.simpletorrent.data.DefaultDataRepository
 import com.jpcottin.simpletorrent.data.FileInfo
 import com.jpcottin.simpletorrent.data.PeerInfo
@@ -99,9 +104,11 @@ fun MainScreen(
     val createState by viewModel.createState.collectAsStateWithLifecycle()
     var magnetInput by remember { mutableStateOf("") }
     var showSampleSheet by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
-    fun resolveTreeToPath(uri: android.net.Uri): String? {
+    fun resolveTreeToPath(uri: Uri): String? {
         val treeDocId = android.provider.DocumentsContract.getTreeDocumentId(uri)
         val colon = treeDocId.indexOf(':')
         if (colon < 0) return null
@@ -200,6 +207,7 @@ fun MainScreen(
     Scaffold(
         modifier = modifier,
         contentWindowInsets = WindowInsets.safeDrawing,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -247,17 +255,17 @@ fun MainScreen(
                                     onPause = { viewModel.pause(torrent.infoHash) },
                                     onResume = { viewModel.resume(torrent.infoHash) },
                                     onRemove = {
-                                        val savePath = com.jpcottin.simpletorrent.data.TorrentManager.currentSavePath
-                                        val prefs = context.getSharedPreferences("player_positions", android.content.Context.MODE_PRIVATE)
-                                        prefs.edit().apply {
+                                        val savePath = TorrentManager.currentSavePath
+                                        val prefs = context.getSharedPreferences("player_positions", Context.MODE_PRIVATE)
+                                        prefs.edit {
                                             torrent.fileList.forEach { remove("$savePath/${it.name}") }
-                                        }.apply()
+                                        }
                                         viewModel.remove(torrent.infoHash, deleteFiles = true)
                                     },
                                     onPlay = { relPath, title ->
                                         viewModel.setSequentialDownload(torrent.infoHash, true)
-                                        val savePath = com.jpcottin.simpletorrent.data.TorrentManager.currentSavePath
-                                        onItemClick(com.jpcottin.simpletorrent.Player("$savePath/$relPath", title))
+                                        val savePath = TorrentManager.currentSavePath
+                                        onItemClick(Player("$savePath/$relPath", title))
                                     },
                                 )
                             }
@@ -274,6 +282,9 @@ fun MainScreen(
             onAdd = { magnet ->
                 showSampleSheet = false
                 viewModel.addMagnet(magnet)
+                scope.launch {
+                    snackbarHostState.showSnackbar("Adding torrent to downloads")
+                }
             },
         )
     }
@@ -305,8 +316,9 @@ internal fun MagnetInputBar(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { onAdd() }),
         )
-        androidx.compose.material3.Button(onClick = onAdd) { Text("Add") }
+        Button(onClick = onAdd) { Text("Add") }
         IconButton(onClick = onSampleTorrents) {
+            @Suppress("DEPRECATION")
             Icon(Icons.Filled.PlaylistAdd, contentDescription = "Sample torrents")
         }
         Box {
@@ -495,7 +507,7 @@ internal fun TorrentCard(
                 }
                 // Play / buffering indicator for single-file playable torrents
                 if (torrent.fileList.size == 1 && torrent.fileList[0].name.isPlayable()) {
-                    if (torrent.progress >= 0.01f && torrent.progress < 0.05f) {
+                    if (torrent.progress in 0.01f..<0.05f) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp).padding(2.dp))
                     }
                 }
