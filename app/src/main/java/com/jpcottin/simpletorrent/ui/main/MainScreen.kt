@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
@@ -37,7 +38,6 @@ import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlayCircle
-import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -326,8 +326,7 @@ internal fun MagnetInputBar(
         )
         Button(onClick = onAdd) { Text("Add") }
         IconButton(onClick = onSampleTorrents) {
-            @Suppress("DEPRECATION")
-            Icon(Icons.Filled.PlaylistAdd, contentDescription = "Sample torrents")
+            Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "Sample torrents")
         }
         Box {
             IconButton(onClick = { showCreateMenu = true }) {
