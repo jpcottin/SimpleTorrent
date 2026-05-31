@@ -10,10 +10,13 @@ import com.jpcottin.simpletorrent.data.DataRepository
 import com.jpcottin.simpletorrent.data.TorrentInfo
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.io.File
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -31,10 +34,20 @@ class MainScreenViewModel(
             .catch { emit(MainScreenUiState.Error(it)) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainScreenUiState.Loading)
 
+    private val _errorEvents = MutableSharedFlow<String>(extraBufferCapacity = 8)
+    val errorEvents: SharedFlow<String> = _errorEvents.asSharedFlow()
+
     private val _createState = MutableStateFlow<CreateState>(CreateState.Idle)
     val createState: StateFlow<CreateState> = _createState.asStateFlow()
 
-    fun addMagnet(uri: String) { viewModelScope.launch { repository.addMagnet(uri.trim()) } }
+    fun addMagnet(uri: String) {
+        viewModelScope.launch {
+            val result = repository.addMagnet(uri.trim())
+            if (result.startsWith("error:")) {
+                _errorEvents.emit(result.removePrefix("error: "))
+            }
+        }
+    }
     fun pause(infoHash: String) { repository.pauseTorrent(infoHash) }
     fun resume(infoHash: String) { repository.resumeTorrent(infoHash) }
     fun remove(infoHash: String, deleteFiles: Boolean) { repository.removeTorrent(infoHash, deleteFiles) }
@@ -78,6 +91,16 @@ class MainScreenViewModel(
     }
 
     fun dismissCreateResult() { _createState.value = CreateState.Idle }
+
+    fun onAppBackground() {
+        com.jpcottin.simpletorrent.data.TorrentManager.isInBackground = true
+        repository.setBackgroundMode(true)
+    }
+
+    fun onAppForeground() {
+        com.jpcottin.simpletorrent.data.TorrentManager.isInBackground = false
+        repository.setBackgroundMode(false)
+    }
 }
 
 sealed interface CreateState {

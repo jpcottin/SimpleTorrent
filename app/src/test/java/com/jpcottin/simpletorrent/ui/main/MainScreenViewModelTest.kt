@@ -10,6 +10,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -65,6 +66,14 @@ class MainScreenViewModelTest {
         val vm = viewModel(repo = repo)
         vm.addMagnet("  magnet:?xt=urn:btih:abc  ")
         assertEquals("magnet:?xt=urn:btih:abc", repo.lastAddedMagnet)
+    }
+
+    @Test
+    fun addMagnet_delegatesToRepository_withDefaultOkResult() = runTest {
+        val repo = FakeRepository(addMagnetResult = "ok")
+        val vm = viewModel(repo = repo)
+        vm.addMagnet("magnet:?xt=urn:btih:test")
+        assertEquals("magnet:?xt=urn:btih:test", repo.lastAddedMagnet)
     }
 
     @Test
@@ -150,6 +159,7 @@ private class FakeRepository(
     private val throwOnTorrents: Throwable? = null,
     private val createResult: CreateTorrentResult =
         CreateTorrentResult.Success("test.mkv", "/tmp/test.mkv.torrent", "magnet:?xt=urn:btih:aabbcc"),
+    private val addMagnetResult: String = "ok",
 ) : DataRepository {
 
     override val torrents: Flow<List<TorrentInfo>> = flow {
@@ -163,7 +173,7 @@ private class FakeRepository(
     var lastRemovedHash: String? = null
     var lastRemovedDeleteFiles: Boolean? = null
 
-    override suspend fun addMagnet(uri: String): String { lastAddedMagnet = uri; return "ok" }
+    override suspend fun addMagnet(uri: String): String { lastAddedMagnet = uri; return addMagnetResult }
     override fun pauseTorrent(infoHash: String) { lastPausedHash = infoHash }
     override fun resumeTorrent(infoHash: String) { lastResumedHash = infoHash }
     override fun removeTorrent(infoHash: String, deleteFiles: Boolean) {
@@ -171,4 +181,5 @@ private class FakeRepository(
     }
     override fun setSequentialDownload(infoHash: String, enabled: Boolean) {}
     override suspend fun createTorrentFrom(sourcePath: String, outputDir: String) = createResult
+    override fun setBackgroundMode(isBackground: Boolean) {}
 }

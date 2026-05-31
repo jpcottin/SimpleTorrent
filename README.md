@@ -23,8 +23,12 @@ Android NDK and the libtorrent-rasterbar C++ library.
 ## Recent Improvements
 
 - **Subtitle support robustness**: Case-insensitive language code matching, proper fallback for unknown locales, fixed Compose state mutation
-- **User feedback**: Sample torrents now show confirmation snackbar when added
-- **Code quality**: Extracted testable subtitle detection logic, added unit tests for edge cases
+- **User feedback**: Sample torrents now show confirmation snackbar when added; `addMagnet` errors are surfaced as snackbar alerts
+- **Error handling**: Per-torrent error tracking (tracker & torrent errors displayed on cards); polling flow auto-recovers from transient errors instead of getting stuck
+- **Connection optimization**: Session connection limits, unchoke slots, active torrent limits for bandwidth efficiency
+- **Peer discovery**: DHT bootstrap nodes configured; `announce_to_all_trackers/tiers` enabled for faster peer finding
+- **Battery optimization**: Libtorrent tick interval slows to 2000ms in background (vs 500ms foreground); polling rate drops to 10s background / 3s foreground; alert queue capped at 1000 entries
+- **Code quality**: Polling now runs on IO dispatcher (not main thread); timeouts for peer/request/handshake; send buffer tuning
 
 ## Demo
 

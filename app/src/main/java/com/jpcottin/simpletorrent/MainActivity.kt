@@ -38,6 +38,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        // App is becoming visible; restore normal libtorrent tick interval and polling
+        TorrentManager.nativeSetTickInterval(500)
+        TorrentManager.isInBackground = false
+    }
+
     override fun onResume() {
         super.onResume()
         // Reinit only if the resolved save path changed (e.g. user just granted MANAGE_EXTERNAL_STORAGE)
@@ -50,10 +57,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
-        // onStop is guaranteed before process death; flush resume data here so we
-        // survive the OS killing the process without onDestroy being called.
+        // App is going background; slow down libtorrent to save battery
         lifecycleScope.launch(Dispatchers.IO) {
             TorrentManager.nativeSaveResumeData()
+            TorrentManager.nativeSetTickInterval(2000)
+            TorrentManager.isInBackground = true
         }
     }
 

@@ -58,6 +58,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -107,6 +108,13 @@ fun MainScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    // Collect error events and show as snackbar
+    LaunchedEffect(Unit) {
+        viewModel.errorEvents.collect { message ->
+            snackbarHostState.showSnackbar(message)
+        }
+    }
 
     fun resolveTreeToPath(uri: Uri): String? {
         val treeDocId = android.provider.DocumentsContract.getTreeDocumentId(uri)
@@ -443,6 +451,16 @@ internal fun TorrentCard(
                 fontSize = 12.sp,
                 modifier = Modifier.padding(top = 2.dp, bottom = 6.dp),
             )
+            if (torrent.lastError.isNotEmpty()) {
+                Text(
+                    text = torrent.lastError,
+                    fontSize = 10.sp,
+                    color = Color(0xFFFF6B6B),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+            }
             LinearProgressIndicator(
                 progress = { torrent.progress },
                 modifier = Modifier.fillMaxWidth(),

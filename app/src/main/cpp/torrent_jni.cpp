@@ -180,7 +180,8 @@ Java_com_jpcottin_simpletorrent_data_TorrentManager_nativeInit(
     settings.set_int(lt::settings_pack::alert_mask,
         lt::alert::status_notification  |
         lt::alert::error_notification   |
-        lt::alert::storage_notification);   // needed for save_resume_data_alert
+        lt::alert::storage_notification |
+        lt::alert::tracker_notification);   // for tracker_error_alert, torrent_error_alert
     settings.set_bool(lt::settings_pack::enable_dht, true);
     settings.set_bool(lt::settings_pack::enable_lsd, true);   // local peer discovery on same LAN
     settings.set_bool(lt::settings_pack::enable_upnp, true);
@@ -188,6 +189,36 @@ Java_com_jpcottin_simpletorrent_data_TorrentManager_nativeInit(
     // Default LSD interval is 5 minutes — far too slow for local testing.
     // 15 s means peers on the same LAN (or same emulator host) find each other almost instantly.
     settings.set_int(lt::settings_pack::local_service_announce_interval, 15);
+
+    // Timeouts for mobile networks
+    settings.set_int(lt::settings_pack::peer_timeout,      60);
+    settings.set_int(lt::settings_pack::request_timeout,   20);
+    settings.set_int(lt::settings_pack::handshake_timeout, 10);
+
+    // Connection & unchoke limits
+    settings.set_int(lt::settings_pack::connections_limit,    200);
+    settings.set_int(lt::settings_pack::unchoke_slots_limit,  8);
+
+    // Active torrent limits
+    settings.set_int(lt::settings_pack::active_downloads, 4);
+    settings.set_int(lt::settings_pack::active_seeds,     4);
+    settings.set_int(lt::settings_pack::active_limit,     6);
+
+    // Tracker announce behavior
+    settings.set_bool(lt::settings_pack::announce_to_all_trackers, true);
+    settings.set_bool(lt::settings_pack::announce_to_all_tiers,    true);
+
+    // DHT bootstrap nodes
+    settings.set_str(lt::settings_pack::dht_bootstrap_nodes,
+        "router.bittorrent.com:6881,"
+        "router.utorrent.com:6881,"
+        "dht.transmissionbt.com:6881");
+
+    // Memory & CPU tuning
+    settings.set_int(lt::settings_pack::alert_queue_size, 1000);
+    settings.set_int(lt::settings_pack::tick_interval,    500);   // ms; reduces CPU; default is 100ms
+    settings.set_int(lt::settings_pack::send_buffer_watermark,     512 * 1024);   // 512 KiB
+    settings.set_int(lt::settings_pack::send_buffer_low_watermark, 128 * 1024);   // 128 KiB
 
     g_session = std::make_unique<lt::session>(settings);
     LOGI("Session started  save_path=%s  state_dir=%s", g_save_path.c_str(), g_state_dir.c_str());
@@ -283,6 +314,29 @@ Java_com_jpcottin_simpletorrent_data_TorrentManager_getTorrentsJson(
     std::vector<lt::alert*> alerts;
     g_session->pop_alerts(&alerts);
 
+    // Process alerts to build error map and save resume data
+    std::unordered_map<std::string, std::string> torrent_errors;
+    for (auto* a : alerts) {
+        if (auto* rd = lt::alert_cast<lt::save_resume_data_alert>(a)) {
+            // Write resume data to disk
+            auto buf = lt::write_resume_data_buf(rd->params);
+            std::string path = resume_path(rd->params.info_hashes.v1);
+            std::ofstream f(path, std::ios::binary | std::ios::trunc);
+            if (f) f.write(buf.data(), static_cast<std::streamsize>(buf.size()));
+        } else if (auto* te = lt::alert_cast<lt::torrent_error_alert>(a)) {
+            std::string hash = sha1_to_hex(te->handle.status().info_hashes.v1);
+            torrent_errors[hash] = te->error.message();
+            LOGE("Torrent error [%s]: %s", hash.c_str(), te->error.message().c_str());
+        } else if (auto* tr = lt::alert_cast<lt::tracker_error_alert>(a)) {
+            // Tracker errors; only store if no torrent-level error exists
+            std::string hash = sha1_to_hex(tr->handle.status().info_hashes.v1);
+            if (torrent_errors.find(hash) == torrent_errors.end()) {
+                torrent_errors[hash] = "tracker: " + tr->error.message();
+                LOGE("Tracker error [%s]: %s", hash.c_str(), tr->error.message().c_str());
+            }
+        }
+    }
+
     std::ostringstream json;
     json << "[";
     bool first = true;
@@ -335,8 +389,12 @@ Java_com_jpcottin_simpletorrent_data_TorrentManager_getTorrentsJson(
             });
         auto top = std::min(peer_vec.size(), size_t(5));
 
+        auto err_it = torrent_errors.find(sha1_to_hex(st.info_hashes.v1));
+        std::string last_error = (err_it != torrent_errors.end()) ? err_it->second : "";
+
         json << "{"
              << "\"infoHash\":"   << json_str(sha1_to_hex(st.info_hashes.v1)) << ","
+             << "\"lastError\":"  << json_str(last_error)                      << ","
              << "\"name\":"       << json_str(name)                  << ","
              << "\"state\":"      << json_str(state_str(st.state))   << ","
              << "\"isPaused\":"   << (paused ? "true" : "false")     << ","
@@ -559,6 +617,33 @@ Java_com_jpcottin_simpletorrent_data_TorrentManager_saveTorrentFile(
     }
     LOGI("Saved torrent file: %s", path.c_str());
     return env->NewStringUTF(path.c_str());
+}
+
+// Set download and upload rate limits (in KB/s; 0 = unlimited).
+JNIEXPORT void JNICALL
+Java_com_jpcottin_simpletorrent_data_TorrentManager_nativeSetBandwidthLimits(
+        JNIEnv* /*env*/, jobject /*thiz*/, jint downloadKbs, jint uploadKbs) {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (!g_session) return;
+    lt::settings_pack pack;
+    // Convert KB/s to bytes/s; 0 means unlimited in libtorrent
+    pack.set_int(lt::settings_pack::download_rate_limit, downloadKbs * 1024);
+    pack.set_int(lt::settings_pack::upload_rate_limit,   uploadKbs   * 1024);
+    g_session->apply_settings(pack);
+    LOGI("Bandwidth limits: down=%d KB/s up=%d KB/s", downloadKbs, uploadKbs);
+}
+
+// Set the libtorrent session tick interval (in milliseconds).
+// Lower values (e.g. 500) reduce CPU; higher values (e.g. 2000) save battery in background.
+JNIEXPORT void JNICALL
+Java_com_jpcottin_simpletorrent_data_TorrentManager_nativeSetTickInterval(
+        JNIEnv* /*env*/, jobject /*thiz*/, jint intervalMs) {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (!g_session) return;
+    lt::settings_pack pack;
+    pack.set_int(lt::settings_pack::tick_interval, intervalMs);
+    g_session->apply_settings(pack);
+    LOGI("Tick interval set to %d ms", intervalMs);
 }
 
 } // extern "C"
