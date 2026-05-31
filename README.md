@@ -20,6 +20,12 @@ Android NDK and the libtorrent-rasterbar C++ library.
 - Adaptive multi-column grid — 1 column on phones, 2 on foldables, 3 on tablets
 - Full edge-to-edge UI with proper IME insets, Material You theming
 
+## Recent Improvements
+
+- **Subtitle support robustness**: Case-insensitive language code matching, proper fallback for unknown locales, fixed Compose state mutation
+- **User feedback**: Sample torrents now show confirmation snackbar when added
+- **Code quality**: Extracted testable subtitle detection logic, added unit tests for edge cases
+
 ## Demo
 
 https://github.com/user-attachments/assets/6182efdb-9862-47ee-9fa7-011a64ee87eb
