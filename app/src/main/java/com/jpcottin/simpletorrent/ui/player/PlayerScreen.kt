@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.ClosedCaption
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -35,8 +36,11 @@ import androidx.core.content.edit
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
+import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
@@ -53,29 +57,15 @@ fun PlayerScreen(filePath: String, title: String, onBack: () -> Unit) {
     val prefs = remember { context.getSharedPreferences("player_positions", Context.MODE_PRIVATE) }
     var isBuffering by remember { mutableStateOf(true) }
     var showSubtitleMenu by remember { mutableStateOf(false) }
+    var showAudioMenu by remember { mutableStateOf(false) }
+    var audioTracks by remember { mutableStateOf(emptyList<AudioTrackOption>()) }
 
     val (player, subtitles) = remember(filePath) {
-        if (isPreview) return@remember null to emptyList<Pair<String, String>>()
+        if (isPreview) return@remember null to emptyList<SubtitleEntry>()
         val videoFile = File(filePath)
-        val srtConfigs = mutableListOf<MediaItem.SubtitleConfiguration>()
         val videoDir = videoFile.parentFile
-        val subtitleLabels = findSubtitles(videoDir)
-
-        videoDir?.listFiles { file -> file.isFile && file.extension == "srt" }?.forEach { srtFile ->
-            val match = Regex("(?i)([a-zA-Z]{2})\\.srt$").find(srtFile.name)
-            if (match != null) {
-                val languageCode = match.groupValues[1].lowercase()
-                @Suppress("DEPRECATION")
-                val displayLanguage = Locale(languageCode).displayLanguage.takeIf { it.isNotEmpty() } ?: languageCode
-                srtConfigs.add(
-                    MediaItem.SubtitleConfiguration.Builder(Uri.fromFile(srtFile))
-                        .setMimeType("application/x-subrip")
-                        .setLanguage(languageCode)
-                        .setLabel(displayLanguage)
-                        .build()
-                )
-            }
-        }
+        val subtitleEntries = findSubtitleConfigs(videoDir)
+        val srtConfigs = subtitleEntries.map { it.config }
 
         val exoPlayer = ExoPlayer.Builder(context).build().apply {
             val mediaItem = MediaItem.Builder()
@@ -89,7 +79,7 @@ fun PlayerScreen(filePath: String, title: String, onBack: () -> Unit) {
             if (savedPosition > 0L) seekTo(savedPosition)
             playWhenReady = true
         }
-        exoPlayer to subtitleLabels
+        exoPlayer to subtitleEntries
     }
     val actualPlayer = player
 
@@ -98,6 +88,24 @@ fun PlayerScreen(filePath: String, title: String, onBack: () -> Unit) {
         val listener = object : Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
                 isBuffering = state == Player.STATE_BUFFERING
+            }
+
+            override fun onTracksChanged(tracks: Tracks) {
+                val audioTrackOptions = mutableListOf<AudioTrackOption>()
+                for (i in 0 until tracks.groups.size) {
+                    val group = tracks.groups[i]
+                    if (group.type == C.TRACK_TYPE_AUDIO) {
+                        for (j in 0 until group.length) {
+                            @Suppress("DEPRECATION")
+                            val format = group.getTrackFormat(j)
+                            val label = format.language?.let { lang ->
+                                Locale(lang).displayLanguage.takeIf { it.isNotEmpty() } ?: lang
+                            } ?: format.label ?: "Track ${j + 1}"
+                            audioTrackOptions.add(AudioTrackOption(group, j, label))
+                        }
+                    }
+                }
+                audioTracks = audioTrackOptions
             }
         }
         actualPlayer.addListener(listener)
@@ -165,42 +173,72 @@ fun PlayerScreen(filePath: String, title: String, onBack: () -> Unit) {
                 tint = Color.White,
             )
         }
-        if (subtitles.isNotEmpty() && actualPlayer != null) {
+        if ((subtitles.isNotEmpty() || audioTracks.size > 1) && actualPlayer != null) {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(WindowInsets.safeDrawing.asPaddingValues()),
             ) {
-                IconButton(onClick = { showSubtitleMenu = !showSubtitleMenu }) {
-                    Icon(
-                        Icons.Default.ClosedCaption,
-                        contentDescription = "Subtitles",
-                        tint = Color.White,
-                    )
-                }
-                DropdownMenu(
-                    expanded = showSubtitleMenu,
-                    onDismissRequest = { showSubtitleMenu = false },
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("None") },
-                        onClick = {
-                            actualPlayer.trackSelectionParameters = actualPlayer.trackSelectionParameters.buildUpon()
-                                .setPreferredTextLanguages()
-                                .build()
-                            showSubtitleMenu = false
-                        },
-                    )
-                    subtitles.forEach { (languageCode, language) ->
+                if (subtitles.isNotEmpty()) {
+                    IconButton(onClick = { showSubtitleMenu = !showSubtitleMenu }) {
+                        Icon(
+                            Icons.Default.ClosedCaption,
+                            contentDescription = "Subtitles",
+                            tint = Color.White,
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showSubtitleMenu,
+                        onDismissRequest = { showSubtitleMenu = false },
+                    ) {
                         DropdownMenuItem(
-                            text = { Text(language) },
+                            text = { Text("None") },
                             onClick = {
                                 actualPlayer.trackSelectionParameters = actualPlayer.trackSelectionParameters.buildUpon()
-                                    .setPreferredTextLanguages(languageCode)
+                                    .setPreferredTextLanguages()
                                     .build()
                                 showSubtitleMenu = false
                             },
                         )
+                        subtitles.forEach { entry ->
+                            DropdownMenuItem(
+                                text = { Text(entry.label) },
+                                onClick = {
+                                    actualPlayer.trackSelectionParameters = actualPlayer.trackSelectionParameters.buildUpon()
+                                        .setPreferredTextLanguages(entry.languageCode)
+                                        .build()
+                                    showSubtitleMenu = false
+                                },
+                            )
+                        }
+                    }
+                }
+                if (audioTracks.size > 1) {
+                    IconButton(onClick = { showAudioMenu = !showAudioMenu }) {
+                        Icon(
+                            Icons.Default.Audiotrack,
+                            contentDescription = "Audio tracks",
+                            tint = Color.White,
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showAudioMenu,
+                        onDismissRequest = { showAudioMenu = false },
+                    ) {
+                        audioTracks.forEach { track ->
+                            DropdownMenuItem(
+                                text = { Text(track.label) },
+                                onClick = {
+                                    val format = track.group.getTrackFormat(track.index)
+                                    val builder = actualPlayer.trackSelectionParameters.buildUpon()
+                                    if (format.language != null) {
+                                        builder.setPreferredAudioLanguages(format.language!!)
+                                    }
+                                    actualPlayer.trackSelectionParameters = builder.build()
+                                    showAudioMenu = false
+                                },
+                            )
+                        }
                     }
                 }
             }
@@ -208,18 +246,69 @@ fun PlayerScreen(filePath: String, title: String, onBack: () -> Unit) {
     }
 }
 
-internal fun findSubtitles(videoDir: File?): List<Pair<String, String>> {
-    val subtitleLabels = mutableListOf<Pair<String, String>>()
-    videoDir?.listFiles { file -> file.isFile && file.extension == "srt" }?.forEach { srtFile ->
-        val match = Regex("(?i)([a-zA-Z]{2})\\.srt$").find(srtFile.name)
-        if (match != null) {
-            val languageCode = match.groupValues[1].lowercase()
-            @Suppress("DEPRECATION")
-            val displayLanguage = Locale(languageCode).displayLanguage.takeIf { it.isNotEmpty() } ?: languageCode
-            subtitleLabels.add(languageCode to displayLanguage)
+internal data class SubtitleEntry(
+    val config: MediaItem.SubtitleConfiguration,
+    val languageCode: String,
+    val label: String,
+)
+
+internal data class AudioTrackOption(
+    val group: Tracks.Group,
+    val index: Int,
+    val label: String,
+)
+
+internal fun findSubtitleConfigs(videoDir: File?): List<SubtitleEntry> {
+    val entries = mutableListOf<SubtitleEntry>()
+    if (videoDir == null) return entries
+
+    val subtitleExtensions = listOf("srt", "vtt", "ass", "ssa")
+    val mimeTypeMap = mapOf(
+        "srt" to MimeTypes.APPLICATION_SUBRIP,
+        "vtt" to MimeTypes.TEXT_VTT,
+        "ass" to MimeTypes.TEXT_SSA,
+        "ssa" to MimeTypes.TEXT_SSA,
+    )
+
+    val files = videoDir.listFiles() ?: return entries
+    files.filter { file -> file.isFile && file.extension.lowercase() in subtitleExtensions }
+        .forEach { subFile ->
+            val withLangCodeMatch = Regex("(?i)([a-zA-Z]{2,3})\\.([a-z]+)$").find(subFile.name)
+            if (withLangCodeMatch != null) {
+                val languageCode = withLangCodeMatch.groupValues[1].lowercase()
+                val ext = withLangCodeMatch.groupValues[2].lowercase()
+                @Suppress("DEPRECATION")
+                val displayLanguage = Locale(languageCode).displayLanguage.takeIf { it.isNotEmpty() } ?: languageCode
+                entries.add(
+                    SubtitleEntry(
+                        config = MediaItem.SubtitleConfiguration.Builder(Uri.fromFile(subFile))
+                            .setMimeType(mimeTypeMap[ext] ?: MimeTypes.APPLICATION_SUBRIP)
+                            .setLanguage(languageCode)
+                            .setLabel(displayLanguage)
+                            .build(),
+                        languageCode = languageCode,
+                        label = displayLanguage,
+                    )
+                )
+            } else {
+                val noLangCodeMatch = Regex("(?i)\\.([a-z]+)$").find(subFile.name)
+                if (noLangCodeMatch != null) {
+                    val ext = noLangCodeMatch.groupValues[1].lowercase()
+                    entries.add(
+                        SubtitleEntry(
+                            config = MediaItem.SubtitleConfiguration.Builder(Uri.fromFile(subFile))
+                                .setMimeType(mimeTypeMap[ext] ?: MimeTypes.APPLICATION_SUBRIP)
+                                .setLanguage("")
+                                .setLabel("Default")
+                                .build(),
+                            languageCode = "",
+                            label = "Default",
+                        )
+                    )
+                }
+            }
         }
-    }
-    return subtitleLabels
+    return entries
 }
 
 @Preview(name = "Player — buffering", showBackground = true)
