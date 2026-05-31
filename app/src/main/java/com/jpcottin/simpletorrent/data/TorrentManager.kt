@@ -3,6 +3,7 @@ package com.jpcottin.simpletorrent.data
 import android.content.Context
 import android.os.Build
 import android.os.Environment
+import android.util.Log
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -41,6 +42,7 @@ data class TorrentInfo(
     val allTimeUploadBytes: Long = 0L,
     val allTimeDownloadBytes: Long = 0L,
     val fileList: List<FileInfo> = emptyList(),
+    val lastError: String = "",
 )
 
 sealed interface CreateTorrentResult {
@@ -51,6 +53,9 @@ sealed interface CreateTorrentResult {
 object TorrentManager {
 
     private val json = Json { ignoreUnknownKeys = true }
+
+    @Volatile
+    var isInBackground: Boolean = false
 
     init {
         System.loadLibrary("simpletorrent")
@@ -75,6 +80,7 @@ object TorrentManager {
 
     fun getTorrents(): List<TorrentInfo> =
         runCatching { json.decodeFromString<List<TorrentInfo>>(getTorrentsJson()) }
+            .onFailure { Log.e("TorrentManager", "getTorrents parse error", it) }
             .getOrDefault(emptyList())
 
     fun createTorrentFrom(sourcePath: String, outputDir: String): CreateTorrentResult {
@@ -96,6 +102,8 @@ object TorrentManager {
     external fun nativeInit(savePath: String, statePath: String)
     external fun nativeRelease()
     external fun nativeSaveResumeData()
+    external fun nativeSetBandwidthLimits(downloadKbs: Int, uploadKbs: Int)
+    external fun nativeSetTickInterval(intervalMs: Int)
     external fun addMagnet(magnetUri: String): String
     external fun addTorrentFile(torrentPath: String): String
     external fun pauseTorrent(infoHash: String)
