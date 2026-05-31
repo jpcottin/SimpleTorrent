@@ -46,8 +46,15 @@ endif()
 
 # Clang 21 (NDK r29) triggers BOOST_ASIO_HAS_STD_ALIGNED_ALLOC auto-detection but the
 # Android sysroot doesn't expose std::aligned_alloc reliably; use Boost's own impl.
-target_compile_options(torrent-rasterbar PRIVATE "-DBOOST_ASIO_DISABLE_STD_ALIGNED_ALLOC")
-target_compile_options(simpletorrent     PRIVATE "-DBOOST_ASIO_DISABLE_STD_ALIGNED_ALLOC")
+# Also suppress C++17 deprecated redundant constexpr static member definitions.
+target_compile_options(torrent-rasterbar PRIVATE
+    "-DBOOST_ASIO_DISABLE_STD_ALIGNED_ALLOC"
+    "-Wno-deprecated-redundant-constexpr-static-def"
+)
+target_compile_options(simpletorrent     PRIVATE
+    "-DBOOST_ASIO_DISABLE_STD_ALIGNED_ALLOC"
+    "-Wno-deprecated-redundant-constexpr-static-def"
+)
 
 target_link_libraries(simpletorrent
     PRIVATE

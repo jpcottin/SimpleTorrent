@@ -148,6 +148,7 @@ jobs:
           arch: x86_64
           target: google_apis
           profile: pixel_6
+          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim
           script: ./gradlew connectedDebugAndroidTest --no-daemon
 
       - name: Upload instrumented test results
