@@ -24,9 +24,9 @@ https://github.com/user-attachments/assets/6182efdb-9862-47ee-9fa7-011a64ee87eb
 
 ## Screenshots
 
-| Torrent list with live download |
+| Torrent list with file list expanded and active download |
 |---|
-| <img src="screenshots/main.png" width="320" alt="Torrent list showing Big Buck Bunny and Sintel seeding, and Cosmos Laundromat downloading at 3.8 MB/s with 27 peers and live peer table"> |
+| <img src="screenshots/main.png" width="320" alt="Torrent list: Big Buck Bunny seeding with file list expanded showing Play button on the mp4, Sintel seeding, and Cosmos Laundromat downloading at 2.9 MB/s with 25 peers, ETA and ratio"> |
 
 ## Technical Stack
 
