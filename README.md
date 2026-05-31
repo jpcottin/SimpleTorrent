@@ -5,12 +5,13 @@ Android NDK and the libtorrent-rasterbar C++ library.
 
 ## Features
 
-- Add torrents via magnet links
+- Add torrents via magnet links or `.torrent` files
 - Create `.torrent` files from any file or folder on the device and seed them immediately
 - Real-time piece-map visualization (missing / downloaded / actively transferring)
 - Collapsible per-torrent peer list (top 5 by download speed, refreshed every 3 s)
-- ETA, total size, and upload ratio on each torrent card (e.g. `263.6 MB / 1.37 GB  •  ETA 3m 42s  •  ratio 0.42`)
-- Per-file progress list — collapsible file list showing each file's name, size, and individual download progress
+- Collapsible per-file progress list — file name, size, and individual download progress bar
+- ETA, total size, and upload ratio on each card (e.g. `151.7 MB / 263.6 MB  •  ETA 27s  •  ratio 0.42`)
+- Sequential download + in-app ExoPlayer — tap Play (≥ 5 % downloaded) to watch before the file is complete; position is remembered across sessions and cleared when the torrent is deleted
 - Pause, resume, and delete torrents (with optional file removal)
 - Persistent sessions — resume data is saved on `onStop` and restored on next launch
 - Share `.torrent` files to other clients via the system share sheet
@@ -36,6 +37,7 @@ https://github.com/user-attachments/assets/6182efdb-9862-47ee-9fa7-011a64ee87eb
 | Build system | CMake 3.22, Gradle AGP 9.0.1 |
 | Language | Kotlin 2.3.20 |
 | UI | Jetpack Compose (BOM 2026.03.01), Material3 |
+| Media playback | Media3 ExoPlayer 1.10.1 |
 | Navigation | Jetpack Navigation3 1.0.1 |
 | Architecture | MVVM — `ViewModel` + `StateFlow` + `DataRepository` |
 | Serialization | kotlinx.serialization 1.8.1 (JSON bridge between JNI and Kotlin) |
@@ -51,17 +53,25 @@ https://github.com/user-attachments/assets/6182efdb-9862-47ee-9fa7-011a64ee87eb
 SimpleTorrent/
 ├── app/src/main/
 │   ├── cpp/
-│   │   ├── CMakeLists.txt          # NDK build config
-│   │   └── torrent_jni.cpp         # JNI bridge (session, alerts, create_torrent)
-│   ├── java/com/example/simpletorrent/
-│   │   ├── MainActivity.kt         # Lifecycle: init / onStop save / onDestroy release
-│   │   ├── Navigation.kt           # Navigation3 host
+│   │   ├── CMakeLists.txt          # NDK build config; Boost ASIO workaround for Clang 21
+│   │   └── torrent_jni.cpp         # JNI bridge (session, alerts, file_progress, sequential download)
+│   ├── java/com/jpcottin/simpletorrent/
+│   │   ├── MainActivity.kt         # Lifecycle: init / onStop resume-data save / onDestroy release
+│   │   ├── Navigation.kt           # Navigation3 host (Main + Player routes)
+│   │   ├── NavigationKeys.kt       # Serializable NavKey types: Main, Player(filePath, title)
 │   │   ├── data/
-│   │   │   ├── TorrentManager.kt   # Singleton: loads .so, exposes external funs
+│   │   │   ├── TorrentManager.kt   # Singleton: loads .so, data classes, JNI declarations
 │   │   │   └── DataRepository.kt   # Interface + DefaultImpl polling every 3 s
-│   │   └── ui/main/
-│   │       ├── MainScreen.kt       # Compose UI: cards, piece map, peer list, pickers
-│   │       └── MainScreenViewModel.kt
+│   │   ├── theme/
+│   │   │   ├── Color.kt            # Material You color tokens
+│   │   │   ├── Theme.kt            # SimpleTorrentTheme
+│   │   │   └── Type.kt             # Typography scale
+│   │   └── ui/
+│   │       ├── main/
+│   │       │   ├── MainScreen.kt       # Compose UI: cards, piece map, file list, peer list
+│   │       │   └── MainScreenViewModel.kt
+│   │       └── player/
+│   │           └── PlayerScreen.kt     # ExoPlayer fullscreen player; position saved per file path
 │   └── res/
 │       ├── drawable/               # Adaptive icon (vector magnet)
 │       └── xml/file_provider_paths.xml
@@ -74,7 +84,7 @@ SimpleTorrent/
 ## Architecture
 
 ```
-Compose UI
+Compose UI  (MainScreen / PlayerScreen)
     │  collectAsStateWithLifecycle
     ▼
 MainScreenViewModel (StateFlow)
@@ -92,9 +102,14 @@ libsimpletorrent.so  (C++17)
 libtorrent-rasterbar session
 ```
 
-The JNI bridge serialises torrent state to a small JSON string on each poll. This keeps
+The JNI bridge serialises torrent state to a JSON string on each 3-second poll. This keeps
 the Kotlin/C++ boundary thin — the Kotlin side only deals with plain data classes, never
 with raw native pointers.
+
+Sequential download (`set_sequential_download`) is enabled when the user taps Play, shifting
+libtorrent's piece-selection strategy from rarest-first to front-to-back so ExoPlayer can
+start playback before the file is complete. The strategy is best-effort: if peers lack early
+pieces, libtorrent skips ahead and fills gaps later.
 
 Local peer discovery (LSD) is tuned to announce every 15 seconds (libtorrent's default
 is 5 minutes). This makes peers on the same LAN — or two emulators on the same host —
@@ -159,14 +174,14 @@ export BOOST_CMAKE_DIR
 
 ## CI/CD
 
-GitHub Actions runs three jobs on every push / pull request to `RC_2_0` or `main`:
+GitHub Actions runs four jobs on every push / pull request to `master` or `main`:
 
 | Job | Runner | Triggers |
 |---|---|---|
 | **Unit Tests** | `ubuntu-latest` | every push / PR |
 | **Build APK** | `macos-14` (M1) | every push / PR |
 | **Lint** | `ubuntu-latest` | every push / PR |
-| **Instrumented Tests** | `macos-14` + emulator | pushes to `main` only |
+| **Instrumented Tests** | `ubuntu-latest` + emulator | pushes to `master` / `main` only |
 
 Artifacts (APK, test reports, lint HTML) are uploaded for every run.
 

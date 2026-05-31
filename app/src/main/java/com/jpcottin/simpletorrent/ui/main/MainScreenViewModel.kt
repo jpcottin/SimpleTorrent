@@ -38,6 +38,7 @@ class MainScreenViewModel(
     fun pause(infoHash: String) { repository.pauseTorrent(infoHash) }
     fun resume(infoHash: String) { repository.resumeTorrent(infoHash) }
     fun remove(infoHash: String, deleteFiles: Boolean) { repository.removeTorrent(infoHash, deleteFiles) }
+    fun setSequentialDownload(infoHash: String, enabled: Boolean) { repository.setSequentialDownload(infoHash, enabled) }
 
     fun createTorrent(sourcePath: String, outputDir: String) {
         _createState.value = CreateState.Creating

@@ -125,4 +125,8 @@ dependencies {
 
   // JSON serialization (for JNI data bridge)
   implementation(libs.kotlinx.serialization.json)
+
+  // Media3 ExoPlayer for in-app video/audio playback
+  implementation(libs.media3.exoplayer)
+  implementation(libs.media3.ui)
 }

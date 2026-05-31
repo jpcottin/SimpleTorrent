@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FolderOpen
@@ -238,7 +240,19 @@ fun MainScreen(
                                     torrent = torrent,
                                     onPause = { viewModel.pause(torrent.infoHash) },
                                     onResume = { viewModel.resume(torrent.infoHash) },
-                                    onRemove = { viewModel.remove(torrent.infoHash, deleteFiles = true) },
+                                    onRemove = {
+                                        val savePath = com.jpcottin.simpletorrent.data.TorrentManager.currentSavePath
+                                        val prefs = context.getSharedPreferences("player_positions", android.content.Context.MODE_PRIVATE)
+                                        prefs.edit().apply {
+                                            torrent.fileList.forEach { remove("$savePath/${it.name}") }
+                                        }.apply()
+                                        viewModel.remove(torrent.infoHash, deleteFiles = true)
+                                    },
+                                    onPlay = { relPath, title ->
+                                        viewModel.setSequentialDownload(torrent.infoHash, true)
+                                        val savePath = com.jpcottin.simpletorrent.data.TorrentManager.currentSavePath
+                                        onItemClick(com.jpcottin.simpletorrent.Player("$savePath/$relPath", title))
+                                    },
                                 )
                             }
                         }
@@ -296,6 +310,12 @@ private fun MagnetInputBar(
     }
 }
 
+private val PLAYABLE_EXTENSIONS = setOf(
+    "mp4", "mkv", "avi", "mov", "webm", "m4v", "ts", "flv",
+    "mp3", "flac", "ogg", "m4a", "aac", "wav", "opus",
+)
+private fun String.isPlayable() = substringAfterLast('.', "").lowercase() in PLAYABLE_EXTENSIONS
+
 internal fun formatSize(bytes: Long): String = when {
     bytes < 1_024L              -> "$bytes B"
     bytes < 1_024L * 1_024      -> "%.1f KB".format(bytes / 1_024.0)
@@ -316,6 +336,7 @@ private fun TorrentCard(
     onPause: () -> Unit,
     onResume: () -> Unit,
     onRemove: () -> Unit,
+    onPlay: (relPath: String, title: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -414,6 +435,20 @@ private fun TorrentCard(
                         Icon(Icons.Filled.Pause, contentDescription = "Pause")
                     }
                 }
+                // Play / buffering indicator for single-file playable torrents
+                if (torrent.fileList.size == 1 && torrent.fileList[0].name.isPlayable()) {
+                    if (torrent.progress >= 0.01f && torrent.progress < 0.05f) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp).padding(2.dp))
+                    }
+                }
+                if (torrent.fileList.size == 1 && torrent.progress >= 0.05f && torrent.fileList[0].name.isPlayable()) {
+                    IconButton(onClick = {
+                        val file = torrent.fileList[0]
+                        onPlay(file.name, file.name.substringAfterLast('/'))
+                    }) {
+                        Icon(Icons.Filled.PlayCircle, contentDescription = "Play")
+                    }
+                }
                 // Files toggle (only for multi-file torrents)
                 if (torrent.fileList.size > 1) {
                     IconButton(onClick = { showFiles = !showFiles }) {
@@ -493,7 +528,7 @@ private fun TorrentCard(
 
             // Collapsible file list
             AnimatedVisibility(visible = showFiles && torrent.fileList.size > 1) {
-                FileList(files = torrent.fileList)
+                FileList(files = torrent.fileList, onPlay = onPlay)
             }
             // Collapsible peer list
             AnimatedVisibility(visible = showPeers) {
@@ -504,29 +539,49 @@ private fun TorrentCard(
 }
 
 @Composable
-private fun FileList(files: List<FileInfo>, modifier: Modifier = Modifier) {
+private fun FileList(
+    files: List<FileInfo>,
+    onPlay: (relPath: String, title: String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(modifier = modifier.fillMaxWidth()) {
         HorizontalDivider()
         files.forEach { file ->
             val progress = if (file.size > 0) (file.done.toFloat() / file.size).coerceIn(0f, 1f) else 0f
+            val leafName = file.name.substringAfterLast('/')
             Column(modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = file.name,
+                        text = leafName,
                         fontSize = 11.sp,
                         fontFamily = FontFamily.Monospace,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f).padding(end = 8.dp),
+                        modifier = Modifier.weight(1f).padding(end = 4.dp),
                     )
                     Text(
                         text = "${formatSize(file.size)}  ${(progress * 100).toInt()}%",
                         fontSize = 11.sp,
                         fontFamily = FontFamily.Monospace,
                     )
+                    val fileProgress = if (file.size > 0L) file.done.toFloat() / file.size else 0f
+                    if (file.name.isPlayable() && fileProgress >= 0.01f && fileProgress < 0.05f) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp).padding(start = 4.dp))
+                    }
+                    if (file.name.isPlayable() && fileProgress >= 0.05f) {
+                        IconButton(
+                            onClick = { onPlay(file.name, leafName) },
+                            modifier = Modifier.padding(start = 2.dp),
+                        ) {
+                            Icon(
+                                Icons.Filled.PlayCircle,
+                                contentDescription = "Play $leafName",
+                            )
+                        }
+                    }
                 }
                 LinearProgressIndicator(
                     progress = { progress },
@@ -603,7 +658,7 @@ private fun TorrentCardDownloadingPreview() {
                 allTimeUploadBytes  = 12_345_678L,
                 allTimeDownloadBytes = 617_831_044L,
             ),
-            onPause = {}, onResume = {}, onRemove = {},
+            onPause = {}, onResume = {}, onRemove = {}, onPlay = { _, _ -> },
         )
     }
 }
@@ -614,7 +669,7 @@ private fun TorrentCardPausedPreview() {
     SimpleTorrentTheme {
         TorrentCard(
             torrent = TorrentInfo("abc123", "Big Buck Bunny", "downloading", true, 0.42f, 0, 0, 0),
-            onPause = {}, onResume = {}, onRemove = {},
+            onPause = {}, onResume = {}, onRemove = {}, onPlay = { _, _ -> },
         )
     }
 }
@@ -631,7 +686,7 @@ private fun TorrentCardSeedingPreview() {
                 allTimeUploadBytes   = 345_602_560L,
                 allTimeDownloadBytes = 276_482_048L,
             ),
-            onPause = {}, onResume = {}, onRemove = {},
+            onPause = {}, onResume = {}, onRemove = {}, onPlay = { _, _ -> },
         )
     }
 }
@@ -654,7 +709,72 @@ private fun TorrentCardMultiFilePreview() {
                     FileInfo("subtitles_fr.srt",              48_000L,        48_000L),
                 ),
             ),
-            onPause = {}, onResume = {}, onRemove = {},
+            onPause = {}, onResume = {}, onRemove = {}, onPlay = { _, _ -> },
         )
+    }
+}
+
+@Preview(name = "Magnet input bar", showBackground = true)
+@Composable
+private fun MagnetInputBarPreview() {
+    SimpleTorrentTheme {
+        MagnetInputBar(
+            value = "",
+            onValueChange = {},
+            onAdd = {},
+            onCreateFile = {},
+            onCreateFolder = {},
+        )
+    }
+}
+
+@Preview(name = "Magnet input bar — with text", showBackground = true)
+@Composable
+private fun MagnetInputBarFilledPreview() {
+    SimpleTorrentTheme {
+        MagnetInputBar(
+            value = "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c&dn=Big+Buck+Bunny",
+            onValueChange = {},
+            onAdd = {},
+            onCreateFile = {},
+            onCreateFolder = {},
+        )
+    }
+}
+
+@Preview(name = "File list", showBackground = true)
+@Composable
+private fun FileListPreview() {
+    SimpleTorrentTheme {
+        FileList(
+            files = listOf(
+                FileInfo("BigBuckBunny.mp4",  276_482_048L, 276_482_048L),
+                FileInfo("subtitles_en.srt",      140_000L,     140_000L),
+                FileInfo("poster.jpg",            303_000L,     150_000L),
+            ),
+            onPlay = { _, _ -> },
+        )
+    }
+}
+
+@Preview(name = "Peer list", showBackground = true)
+@Composable
+private fun PeerListPreview() {
+    SimpleTorrentTheme {
+        PeerList(
+            peers = listOf(
+                PeerInfo("192.168.1.10:6881",  4096, 128, 0.85f),
+                PeerInfo("10.0.0.5:51413",     1024,   0, 0.42f),
+                PeerInfo("172.16.0.3:6889",      256,  64, 0.10f),
+            ),
+        )
+    }
+}
+
+@Preview(name = "Peer list — empty", showBackground = true)
+@Composable
+private fun PeerListEmptyPreview() {
+    SimpleTorrentTheme {
+        PeerList(peers = emptyList())
     }
 }

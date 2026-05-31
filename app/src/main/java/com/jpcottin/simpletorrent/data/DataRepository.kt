@@ -10,6 +10,7 @@ interface DataRepository {
     fun pauseTorrent(infoHash: String)
     fun resumeTorrent(infoHash: String)
     fun removeTorrent(infoHash: String, deleteFiles: Boolean)
+    fun setSequentialDownload(infoHash: String, enabled: Boolean)
     suspend fun createTorrentFrom(sourcePath: String, outputDir: String): CreateTorrentResult
 }
 
@@ -27,6 +28,8 @@ class DefaultDataRepository : DataRepository {
     override fun resumeTorrent(infoHash: String) = TorrentManager.resumeTorrent(infoHash)
     override fun removeTorrent(infoHash: String, deleteFiles: Boolean) =
         TorrentManager.removeTorrent(infoHash, deleteFiles)
+    override fun setSequentialDownload(infoHash: String, enabled: Boolean) =
+        TorrentManager.setSequentialDownload(infoHash, enabled)
     override suspend fun createTorrentFrom(sourcePath: String, outputDir: String): CreateTorrentResult =
         TorrentManager.createTorrentFrom(sourcePath, outputDir)
 }

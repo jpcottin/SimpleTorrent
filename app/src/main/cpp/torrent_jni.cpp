@@ -390,6 +390,20 @@ Java_com_jpcottin_simpletorrent_data_TorrentManager_getTorrentsJson(
     return env->NewStringUTF(json.str().c_str());
 }
 
+JNIEXPORT void JNICALL
+Java_com_jpcottin_simpletorrent_data_TorrentManager_setSequentialDownload(
+        JNIEnv* env, jobject /*thiz*/, jstring infoHash, jboolean enabled) {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    const char* raw = env->GetStringUTFChars(infoHash, nullptr);
+    std::string hex(raw);
+    env->ReleaseStringUTFChars(infoHash, raw);
+    auto h = find_by_hash(hex);
+    if (h.is_valid()) {
+        h.set_sequential_download(enabled);
+        LOGI("Sequential download %s: %s", enabled ? "enabled" : "disabled", hex.c_str());
+    }
+}
+
 // Add a torrent from a .torrent file on disk.
 // Returns "ok:<infohash>" or "error:<message>".
 JNIEXPORT jstring JNICALL

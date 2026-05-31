@@ -35,6 +35,7 @@ class MainScreenTest {
             override fun pauseTorrent(infoHash: String) {}
             override fun resumeTorrent(infoHash: String) {}
             override fun removeTorrent(infoHash: String, deleteFiles: Boolean) {}
+            override fun setSequentialDownload(infoHash: String, enabled: Boolean) {}
             override suspend fun createTorrentFrom(s: String, o: String) = createResult
         }
         // Construct ViewModel outside the composable to avoid ViewModelConstructorInComposable lint

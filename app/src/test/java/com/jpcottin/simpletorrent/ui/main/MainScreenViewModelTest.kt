@@ -169,5 +169,6 @@ private class FakeRepository(
     override fun removeTorrent(infoHash: String, deleteFiles: Boolean) {
         lastRemovedHash = infoHash; lastRemovedDeleteFiles = deleteFiles
     }
+    override fun setSequentialDownload(infoHash: String, enabled: Boolean) {}
     override suspend fun createTorrentFrom(sourcePath: String, outputDir: String) = createResult
 }
