@@ -120,6 +120,7 @@ fun MagnetInputBarScreenshot() {
             onAdd = {},
             onCreateFile = {},
             onCreateFolder = {},
+            onSampleTorrents = {},
         )
     }
 }

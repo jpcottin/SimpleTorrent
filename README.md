@@ -6,6 +6,7 @@ Android NDK and the libtorrent-rasterbar C++ library.
 ## Features
 
 - Add torrents via magnet links or `.torrent` files
+- Sample torrents library — curated list of public domain and Creative Commons content for quick testing (Big Buck Bunny, Cosmos Laundromat, Sintel, Tears of Steel)
 - Create `.torrent` files from any file or folder on the device and seed them immediately
 - Real-time piece-map visualization (missing / downloaded / actively transferring)
 - Collapsible per-torrent peer list (top 5 by download speed, refreshed every 3 s)
@@ -62,14 +63,15 @@ SimpleTorrent/
 │   │   ├── NavigationKeys.kt       # Serializable NavKey types: Main, Player(filePath, title)
 │   │   ├── data/
 │   │   │   ├── TorrentManager.kt   # Singleton: loads .so, data classes, JNI declarations
-│   │   │   └── DataRepository.kt   # Interface + DefaultImpl polling every 3 s
+│   │   │   ├── DataRepository.kt   # Interface + DefaultImpl polling every 3 s
+│   │   │   └── SampleTorrents.kt   # Curated list of public domain / CC torrents for testing
 │   │   ├── theme/
 │   │   │   ├── Color.kt            # Material You color tokens
 │   │   │   ├── Theme.kt            # SimpleTorrentTheme
 │   │   │   └── Type.kt             # Typography scale
 │   │   └── ui/
 │   │       ├── main/
-│   │       │   ├── MainScreen.kt       # Compose UI: cards, piece map, file list, peer list
+│   │       │   ├── MainScreen.kt       # Compose UI: cards, piece map, file list, peer list, sample torrents
 │   │       │   └── MainScreenViewModel.kt
 │   │       └── player/
 │   │           └── PlayerScreen.kt     # ExoPlayer fullscreen player; position saved per file path; auto-detects and loads multi-language subtitles

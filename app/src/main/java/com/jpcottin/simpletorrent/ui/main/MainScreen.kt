@@ -39,7 +39,10 @@ import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -77,6 +80,7 @@ import androidx.navigation3.runtime.NavKey
 import com.jpcottin.simpletorrent.data.DefaultDataRepository
 import com.jpcottin.simpletorrent.data.FileInfo
 import com.jpcottin.simpletorrent.data.PeerInfo
+import com.jpcottin.simpletorrent.data.SAMPLE_TORRENTS
 import com.jpcottin.simpletorrent.data.TorrentInfo
 import com.jpcottin.simpletorrent.data.TorrentManager
 import com.jpcottin.simpletorrent.theme.SimpleTorrentTheme
@@ -94,6 +98,7 @@ fun MainScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val createState by viewModel.createState.collectAsStateWithLifecycle()
     var magnetInput by remember { mutableStateOf("") }
+    var showSampleSheet by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     fun resolveTreeToPath(uri: android.net.Uri): String? {
@@ -214,6 +219,7 @@ fun MainScreen(
                 },
                 onCreateFile   = { fileLauncher.launch(arrayOf("*/*")) },
                 onCreateFolder = { folderLauncher.launch(null) },
+                onSampleTorrents = { showSampleSheet = true },
             )
 
             when (state) {
@@ -261,6 +267,16 @@ fun MainScreen(
             }
         }
     }
+
+    if (showSampleSheet) {
+        SampleTorrentsSheet(
+            onDismiss = { showSampleSheet = false },
+            onAdd = { magnet ->
+                showSampleSheet = false
+                viewModel.addMagnet(magnet)
+            },
+        )
+    }
 }
 
 @Composable
@@ -270,6 +286,7 @@ internal fun MagnetInputBar(
     onAdd: () -> Unit,
     onCreateFile: () -> Unit,
     onCreateFolder: () -> Unit,
+    onSampleTorrents: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showCreateMenu by remember { mutableStateOf(false) }
@@ -289,6 +306,9 @@ internal fun MagnetInputBar(
             keyboardActions = KeyboardActions(onDone = { onAdd() }),
         )
         androidx.compose.material3.Button(onClick = onAdd) { Text("Add") }
+        IconButton(onClick = onSampleTorrents) {
+            Icon(Icons.Filled.PlaylistAdd, contentDescription = "Sample torrents")
+        }
         Box {
             IconButton(onClick = { showCreateMenu = true }) {
                 Icon(Icons.Filled.Add, contentDescription = "Create torrent")
@@ -305,6 +325,44 @@ internal fun MagnetInputBar(
                     text = { Text("From folder") },
                     onClick = { showCreateMenu = false; onCreateFolder() },
                 )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun SampleTorrentsSheet(
+    onDismiss: () -> Unit,
+    onAdd: (String) -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+        ) {
+            Text(
+                "Sample Torrents",
+                fontSize = 18.sp,
+                modifier = Modifier.padding(bottom = 16.dp),
+            )
+            SAMPLE_TORRENTS.forEach { torrent ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(torrent.title, fontSize = 14.sp)
+                        Text(torrent.description, fontSize = 12.sp, color = Color.Gray)
+                    }
+                    TextButton(onClick = { onAdd(torrent.magnet) }) {
+                        Text("Add")
+                    }
+                }
             }
         }
     }
@@ -724,6 +782,7 @@ private fun MagnetInputBarPreview() {
             onAdd = {},
             onCreateFile = {},
             onCreateFolder = {},
+            onSampleTorrents = {},
         )
     }
 }
@@ -738,6 +797,7 @@ private fun MagnetInputBarFilledPreview() {
             onAdd = {},
             onCreateFile = {},
             onCreateFolder = {},
+            onSampleTorrents = {},
         )
     }
 }
