@@ -264,7 +264,7 @@ fun MainScreen(
 }
 
 @Composable
-private fun MagnetInputBar(
+internal fun MagnetInputBar(
     value: String,
     onValueChange: (String) -> Unit,
     onAdd: () -> Unit,
@@ -331,7 +331,7 @@ internal fun formatEta(seconds: Long): String = when {
 }
 
 @Composable
-private fun TorrentCard(
+internal fun TorrentCard(
     torrent: TorrentInfo,
     onPause: () -> Unit,
     onResume: () -> Unit,
@@ -539,7 +539,7 @@ private fun TorrentCard(
 }
 
 @Composable
-private fun FileList(
+internal fun FileList(
     files: List<FileInfo>,
     onPlay: (relPath: String, title: String) -> Unit,
     modifier: Modifier = Modifier,
@@ -593,7 +593,7 @@ private fun FileList(
 }
 
 @Composable
-private fun PeerList(peers: List<PeerInfo>, modifier: Modifier = Modifier) {
+internal fun PeerList(peers: List<PeerInfo>, modifier: Modifier = Modifier) {
     Column(modifier = modifier.fillMaxWidth()) {
         HorizontalDivider()
         if (peers.isEmpty()) {

@@ -2,6 +2,7 @@ plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.compose.compiler)
   alias(libs.plugins.kotlin.serialization)
+  alias(libs.plugins.screenshot)
 }
 
 android {
@@ -63,6 +64,8 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    experimentalProperties["android.experimental.enableScreenshotTest"] = true
+
     buildFeatures {
       compose = true
       aidl = false
@@ -129,4 +132,8 @@ dependencies {
   // Media3 ExoPlayer for in-app video/audio playback
   implementation(libs.media3.exoplayer)
   implementation(libs.media3.ui)
+
+  // Compose Preview Screenshot Testing
+  screenshotTestImplementation(libs.screenshot.validation.api)
+  screenshotTestImplementation(libs.androidx.compose.ui.tooling)
 }
