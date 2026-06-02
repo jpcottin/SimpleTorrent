@@ -1,9 +1,21 @@
+import java.util.Properties
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.compose.compiler)
   alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.screenshot)
 }
+
+// Boost paths resolve in this order: environment variable, then local.properties
+// (gitignored, same place as sdk.dir — handy when building from the IDE where shell
+// exports aren't visible), then the macOS Homebrew default. See README "Linux".
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+fun boostProperty(name: String, default: String): String =
+    System.getenv(name) ?: localProperties.getProperty(name) ?: default
 
 android {
     namespace = "com.jpcottin.simpletorrent"
@@ -19,14 +31,15 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags += "-std=c++17"
-                // BOOST_CMAKE_DIR env var lets CI override the Homebrew default path
-                val boostDir = System.getenv("BOOST_CMAKE_DIR")
-                    ?: "/opt/homebrew/lib/cmake/Boost-1.90.0"
+                // BOOST_CMAKE_DIR (env or local.properties) overrides the Homebrew default path
+                val boostDir = boostProperty("BOOST_CMAKE_DIR",
+                    "/opt/homebrew/lib/cmake/Boost-1.90.0")
                 // BOOST_INCLUDE_DIR: passed to CMake as a cache var; used via
                 // target_compile_options() in CMakeLists.txt so it bypasses both
                 // CMake's implicit-include filtering AND configure-time feature checks.
-                val boostInclude = System.getenv("BOOST_INCLUDE_DIR")
-                    ?: "/opt/homebrew/include"
+                // On Linux this must be a Boost-only dir, never /usr/include (see CMakeLists.txt).
+                val boostInclude = boostProperty("BOOST_INCLUDE_DIR",
+                    "/opt/homebrew/include")
                 arguments(
                     // libtorrent is in libs/libtorrent submodule — no path override needed
                     "-DBoost_DIR=$boostDir",

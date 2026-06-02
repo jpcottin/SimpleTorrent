@@ -75,6 +75,50 @@ jobs:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
 
+  # ── Job 2b: Build debug APK on Linux (NDK cross-compile sanity on every PR) ──
+  # The macOS job above covers the primary dev path; this one guards the Linux
+  # toolchain (apt Boost in /usr/include + #include_next) so it can't silently rot.
+  build-linux:
+    name: Build Debug APK (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: temurin
+          cache: gradle
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Install Boost via apt
+        run: sudo apt-get install -y libboost-dev
+
+      - name: Resolve Boost dirs
+        run: |
+          BOOST_DIR=$(find /usr/lib -maxdepth 4 -name "Boost-*" -type d 2>/dev/null \
+                      | sort -V | tail -1)
+          echo "BOOST_CMAKE_DIR=$BOOST_DIR" >> "$GITHUB_ENV"
+          # Isolated dir with ONLY a boost/ symlink: -I<dir> finds boost/* but does
+          # not expose glibc system headers (features-time64.h → bits/wordsize.h)
+          # which are absent in the NDK cross-compilation sysroot.
+          mkdir -p /tmp/boost-headers
+          ln -sfn /usr/include/boost /tmp/boost-headers/boost
+          echo "BOOST_INCLUDE_DIR=/tmp/boost-headers" >> "$GITHUB_ENV"
+          echo "Found Boost CMake dir: $BOOST_DIR"
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-debug-linux
+          path: app/build/outputs/apk/debug/app-debug.apk
+
   # ── Job 3: Lint ─────────────────────────────────────────────────────────────
   lint:
     name: Lint

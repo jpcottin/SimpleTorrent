@@ -39,6 +39,14 @@ add_library(simpletorrent SHARED torrent_jni.cpp)
 # emits raw -I flags that bypass this filtering. Using cppFlags/CMAKE_CXX_FLAGS is
 # also wrong because those affect configure-time feature probes (e.g. std::atomic
 # check in libtorrent) and break cross-compilation with host headers in the way.
+#
+# IMPORTANT: BOOST_INCLUDE_DIR must point at a directory that contains ONLY Boost
+# (i.e. just a `boost/` subdir), never the host's /usr/include. The NDK headers use
+# #include_next, which walks past the sysroot into any dir on the search path; if
+# host libc headers (limits.h, features.h, ...) are reachable there, the cross
+# build breaks. On macOS, Homebrew's prefix already satisfies this. On Debian/Ubuntu
+# the system Boost lives in /usr/include alongside glibc, so point BOOST_INCLUDE_DIR
+# at an isolated Boost prefix instead (see README "Linux").
 if(DEFINED BOOST_INCLUDE_DIR)
     target_compile_options(torrent-rasterbar PRIVATE "-I${BOOST_INCLUDE_DIR}")
     target_compile_options(simpletorrent     PRIVATE "-I${BOOST_INCLUDE_DIR}")
