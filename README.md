@@ -169,10 +169,33 @@ export BOOST_CMAKE_DIR=/path/to/cmake/Boost-X.Y.Z
 ```bash
 sudo apt-get install -y libboost-dev
 
-BOOST_CMAKE_DIR=$(find /usr -name "BoostConfig.cmake" 2>/dev/null \
-                  | head -1 | xargs dirname)
+# 1. Boost's CMake config dir (for find_package)
+BOOST_CMAKE_DIR=$(dirname "$(find /usr -name BoostConfig.cmake 2>/dev/null | head -1)")
 export BOOST_CMAKE_DIR
+
+# 2. An *isolated* Boost include dir — a directory containing ONLY a boost/ entry.
+#    Do NOT use /usr/include directly: the Android NDK headers use #include_next,
+#    which would pull the host glibc headers from /usr/include into the cross
+#    build and break it (missing bits/wordsize.h, bits/libc-header-start.h).
+mkdir -p "$HOME/.boost-include"
+ln -sfn /usr/include/boost "$HOME/.boost-include/boost"
+export BOOST_INCLUDE_DIR="$HOME/.boost-include"
+
 ./gradlew assembleDebug
+```
+
+> On macOS this isolation is automatic — Homebrew's prefix holds Boost but no
+> competing libc — which is why only `BOOST_CMAKE_DIR` is needed there.
+
+#### Building from Android Studio on Linux
+
+The IDE doesn't see your shell `export`s. Instead of env vars, put the same two
+paths in `local.properties` (gitignored, alongside `sdk.dir`); the build falls
+back to them automatically:
+
+```properties
+BOOST_CMAKE_DIR=/usr/lib/x86_64-linux-gnu/cmake/Boost-1.83.0
+BOOST_INCLUDE_DIR=/home/<you>/.boost-include
 ```
 
 ## Running Tests
