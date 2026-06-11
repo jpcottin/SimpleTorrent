@@ -534,7 +534,8 @@ Java_com_jpcottin_simpletorrent_data_TorrentManager_setSequentialDownload(
     env->ReleaseStringUTFChars(infoHash, raw);
     auto h = find_by_hash(hex);
     if (h.is_valid()) {
-        h.set_sequential_download(enabled);
+        if (enabled) h.set_flags(lt::torrent_flags::sequential_download);
+        else         h.unset_flags(lt::torrent_flags::sequential_download);
         LOGI("Sequential download %s: %s", enabled ? "enabled" : "disabled", hex.c_str());
     }
 }
