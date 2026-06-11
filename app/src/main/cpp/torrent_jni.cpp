@@ -11,6 +11,7 @@
 #include <sstream>
 #include <string>
 #include <sys/stat.h>
+#include <thread>
 #include <vector>
 
 #include <libtorrent/alert_types.hpp>
@@ -96,6 +97,34 @@ static std::string resume_path(const lt::sha1_hash& hash) {
     return g_state_dir + "/" + sha1_to_hex(hash) + ".resume";
 }
 
+// Write atomically (tmp file + rename): a process kill mid-write must never
+// truncate a previously-good resume file.
+static bool atomic_write(const std::string& path, const char* data, size_t size) {
+    std::string tmp = path + ".tmp";
+    {
+        std::ofstream f(tmp, std::ios::binary | std::ios::trunc);
+        if (!f) return false;
+        f.write(data, static_cast<std::streamsize>(size));
+        f.flush();
+        if (!f) { ::remove(tmp.c_str()); return false; }
+    }
+    if (::rename(tmp.c_str(), path.c_str()) != 0) {
+        ::remove(tmp.c_str());
+        return false;
+    }
+    return true;
+}
+
+static void write_resume_file(const lt::add_torrent_params& params) {
+    mkdir(g_state_dir.c_str(), 0755);
+    auto buf = lt::write_resume_data_buf(params);
+    std::string path = resume_path(params.info_hashes.v1);
+    if (atomic_write(path, buf.data(), buf.size()))
+        LOGI("Saved resume: %s", path.c_str());
+    else
+        LOGE("Failed writing resume: %s", path.c_str());
+}
+
 static void load_resume_data() {
     mkdir(g_state_dir.c_str(), 0755);
     DIR* dir = opendir(g_state_dir.c_str());
@@ -114,7 +143,25 @@ static void load_resume_data() {
         lt::error_code ec;
         lt::add_torrent_params params = lt::read_resume_data(buf, ec);
         if (ec) {
-            LOGE("Bad resume file %s: %s", fname.c_str(), ec.message().c_str());
+            // Quarantine instead of deleting so the file can be inspected; the
+            // .corrupt suffix keeps it from being re-parsed on every launch.
+            LOGE("Bad resume file %s: %s — quarantined as .corrupt", fname.c_str(), ec.message().c_str());
+            ::rename(path.c_str(), (path + ".corrupt").c_str());
+            // Recovery: the filename embeds the info-hash, so re-add as a magnet.
+            // libtorrent re-fetches the metadata and rechecks any data already on
+            // disk, instead of the torrent silently vanishing from the list.
+            std::string hex = fname.substr(0, fname.size() - 7);
+            if (hex.size() == 40 &&
+                hex.find_first_not_of("0123456789abcdef") == std::string::npos) {
+                lt::error_code mec;
+                lt::add_torrent_params recovered =
+                    lt::parse_magnet_uri("magnet:?xt=urn:btih:" + hex, mec);
+                if (!mec) {
+                    recovered.save_path = g_save_path;
+                    g_session->async_add_torrent(recovered);
+                    LOGI("Recovering torrent %s via magnet re-add", hex.c_str());
+                }
+            }
             continue;
         }
         // Preserve the save_path from resume data so seeders keep their original path.
@@ -145,13 +192,10 @@ static void save_all_resume_data() {
         g_session->pop_alerts(&alerts);
         for (auto* a : alerts) {
             if (auto* rd = lt::alert_cast<lt::save_resume_data_alert>(a)) {
-                auto buf = lt::write_resume_data_buf(rd->params);
-                std::string path = resume_path(rd->params.info_hashes.v1);
-                std::ofstream f(path, std::ios::binary | std::ios::trunc);
-                f.write(buf.data(), static_cast<std::streamsize>(buf.size()));
-                LOGI("Saved resume: %s", path.c_str());
+                write_resume_file(rd->params);
                 --outstanding;
-            } else if (lt::alert_cast<lt::save_resume_data_failed_alert>(a)) {
+            } else if (auto* fail = lt::alert_cast<lt::save_resume_data_failed_alert>(a)) {
+                LOGE("save_resume_data failed: %s", fail->error.message().c_str());
                 --outstanding;
             }
         }
@@ -229,12 +273,33 @@ Java_com_jpcottin_simpletorrent_data_TorrentManager_nativeInit(
 JNIEXPORT void JNICALL
 Java_com_jpcottin_simpletorrent_data_TorrentManager_nativeRelease(
         JNIEnv* /*env*/, jobject /*thiz*/) {
-    std::lock_guard<std::mutex> lock(g_mutex);
-    if (!g_session) return;
-    // Resume data is already saved by nativeSaveResumeData() from onStop.
-    // Calling save_all_resume_data() here would block the main thread → ANR.
-    g_session.reset();
-    LOGI("Session released");
+    // Resume data is saved before release: SessionLifecycleCoordinator sequences
+    // nativeSaveResumeData() ahead of this call on its FIFO queue.
+    //
+    // Shutdown must happen OUTSIDE g_mutex: destroying the session joins
+    // libtorrent's network thread, which can block for seconds waiting on
+    // tracker stop-announces. Holding the mutex during that stalls every other
+    // native call — including ones on the main thread — and caused an ANR.
+    lt::session_proxy proxy;
+    {
+        std::lock_guard<std::mutex> lock(g_mutex);
+        if (!g_session) return;
+        proxy = g_session->abort();
+        g_session.reset();
+    }
+    // Finish the shutdown on a detached thread: waiting on tracker stop-announces
+    // can take tens of seconds, and a re-init queued behind this call (save path
+    // change, activity recreation) must not wait for it.
+    std::thread([p = std::move(proxy)]() mutable {
+        {
+            // The proxy must be DESTROYED (not assigned over): only ~session_proxy
+            // joins the network thread; overwriting it would destroy a joinable
+            // std::thread and call std::terminate().
+            lt::session_proxy local = std::move(p);
+        }   // blocks here until the old session is fully torn down
+        LOGI("Session shutdown complete");
+    }).detach();
+    LOGI("Session released (shutdown continuing in background)");
 }
 
 // Save resume data without destroying the session (safe to call from onStop)
@@ -302,6 +367,7 @@ Java_com_jpcottin_simpletorrent_data_TorrentManager_removeTorrent(
     // Also delete the resume file so it isn't reloaded on next start
     std::string path = g_state_dir + "/" + hex + ".resume";
     ::remove(path.c_str());
+    ::remove((path + ".tmp").c_str());
     LOGI("Removed: %s deleteFiles=%d", hex.c_str(), (int)deleteFiles);
 }
 
@@ -314,15 +380,26 @@ Java_com_jpcottin_simpletorrent_data_TorrentManager_getTorrentsJson(
     std::vector<lt::alert*> alerts;
     g_session->pop_alerts(&alerts);
 
-    // Process alerts to build error map and save resume data
+    // Process alerts to build error map and save resume data.
+    // Resume data is requested eagerly (on add / metadata / finish) so a crash or
+    // process kill never loses torrents — onStop is only a final catch-all save.
     std::unordered_map<std::string, std::string> torrent_errors;
     for (auto* a : alerts) {
         if (auto* rd = lt::alert_cast<lt::save_resume_data_alert>(a)) {
-            // Write resume data to disk
-            auto buf = lt::write_resume_data_buf(rd->params);
-            std::string path = resume_path(rd->params.info_hashes.v1);
-            std::ofstream f(path, std::ios::binary | std::ios::trunc);
-            if (f) f.write(buf.data(), static_cast<std::streamsize>(buf.size()));
+            write_resume_file(rd->params);
+        } else if (auto* fail = lt::alert_cast<lt::save_resume_data_failed_alert>(a)) {
+            LOGE("save_resume_data failed: %s", fail->error.message().c_str());
+        } else if (auto* add = lt::alert_cast<lt::add_torrent_alert>(a)) {
+            if (add->error)
+                LOGE("add torrent failed: %s", add->error.message().c_str());
+            else if (add->handle.is_valid())
+                add->handle.save_resume_data(lt::torrent_handle::save_info_dict);
+        } else if (auto* md = lt::alert_cast<lt::metadata_received_alert>(a)) {
+            if (md->handle.is_valid())
+                md->handle.save_resume_data(lt::torrent_handle::save_info_dict);
+        } else if (auto* fin = lt::alert_cast<lt::torrent_finished_alert>(a)) {
+            if (fin->handle.is_valid())
+                fin->handle.save_resume_data(lt::torrent_handle::save_info_dict);
         } else if (auto* te = lt::alert_cast<lt::torrent_error_alert>(a)) {
             std::string hash = sha1_to_hex(te->handle.status().info_hashes.v1);
             torrent_errors[hash] = te->error.message();

@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -174,12 +175,14 @@ fun PlayerScreen(filePath: String, title: String, onBack: () -> Unit) {
             )
         }
         if ((subtitles.isNotEmpty() || audioTracks.size > 1) && actualPlayer != null) {
-            Box(
+            // Row, not Box: with a Box the subtitle and audio buttons render stacked
+            // on top of each other, producing an unreadable overlapped icon.
+            Row(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(WindowInsets.safeDrawing.asPaddingValues()),
             ) {
-                if (subtitles.isNotEmpty()) {
+                if (subtitles.isNotEmpty()) Box {
                     IconButton(onClick = { showSubtitleMenu = !showSubtitleMenu }) {
                         Icon(
                             Icons.Default.ClosedCaption,
@@ -213,7 +216,7 @@ fun PlayerScreen(filePath: String, title: String, onBack: () -> Unit) {
                         }
                     }
                 }
-                if (audioTracks.size > 1) {
+                if (audioTracks.size > 1) Box {
                     IconButton(onClick = { showAudioMenu = !showAudioMenu }) {
                         Icon(
                             Icons.Default.Audiotrack,

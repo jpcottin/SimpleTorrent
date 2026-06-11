@@ -18,15 +18,22 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import com.jpcottin.simpletorrent.data.SessionLifecycleCoordinator
 import com.jpcottin.simpletorrent.data.TorrentManager
 import com.jpcottin.simpletorrent.theme.SimpleTorrentTheme
 
 class MainActivity : ComponentActivity() {
 
+    // All session operations (init/save/release) are sequenced on the coordinator's
+    // FIFO queue, which outlives this activity. lifecycleScope must NOT be used for
+    // the resume-data save: it is cancelled at ON_DESTROY, which used to lose data.
+    private lateinit var session: SessionLifecycleCoordinator
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestAllFilesAccessIfNeeded()
-        TorrentManager.init(this)
+        session = TorrentManager.lifecycleCoordinator(this)
+        session.onCreate()
         handleTorrentIntent(intent)
         enableEdgeToEdge()
         setContent {
@@ -41,32 +48,23 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         // App is becoming visible; restore normal libtorrent tick interval and polling
-        TorrentManager.nativeSetTickInterval(500)
-        TorrentManager.isInBackground = false
+        session.onStart()
     }
 
     override fun onResume() {
         super.onResume()
         // Reinit only if the resolved save path changed (e.g. user just granted MANAGE_EXTERNAL_STORAGE)
-        val newPath = TorrentManager.resolvedSavePath(this)
-        if (newPath != TorrentManager.currentSavePath) {
-            TorrentManager.nativeRelease()
-            TorrentManager.init(this)
-        }
+        session.onResume()
     }
 
     override fun onStop() {
         super.onStop()
-        // App is going background; slow down libtorrent to save battery
-        lifecycleScope.launch(Dispatchers.IO) {
-            TorrentManager.nativeSaveResumeData()
-            TorrentManager.nativeSetTickInterval(2000)
-            TorrentManager.isInBackground = true
-        }
+        // App is going background; save resume data, then slow down libtorrent to save battery
+        session.onStop()
     }
 
     override fun onDestroy() {
-        TorrentManager.nativeRelease()
+        session.onDestroy()
         super.onDestroy()
     }
 
@@ -93,7 +91,8 @@ class MainActivity : ComponentActivity() {
             val stagedFile = File(stagingDir, name)
             runCatching {
                 contentResolver.openInputStream(uri)!!.use { it.copyTo(stagedFile.outputStream()) }
-                TorrentManager.addTorrentFile(stagedFile.absolutePath)
+                // Queue behind any pending init so the add never hits an uninitialized session
+                session.withSession { TorrentManager.addTorrentFile(stagedFile.absolutePath) }
             }
         }
     }

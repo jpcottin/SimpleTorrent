@@ -40,6 +40,8 @@ class MainScreenViewModel(
     private val _createState = MutableStateFlow<CreateState>(CreateState.Idle)
     val createState: StateFlow<CreateState> = _createState.asStateFlow()
 
+    // Threading note: the repository owns the native-boundary contract — its suspend
+    // methods run on the session queue, so plain viewModelScope.launch is safe here.
     fun addMagnet(uri: String) {
         viewModelScope.launch {
             val result = repository.addMagnet(uri.trim())
@@ -48,10 +50,18 @@ class MainScreenViewModel(
             }
         }
     }
-    fun pause(infoHash: String) { repository.pauseTorrent(infoHash) }
-    fun resume(infoHash: String) { repository.resumeTorrent(infoHash) }
-    fun remove(infoHash: String, deleteFiles: Boolean) { repository.removeTorrent(infoHash, deleteFiles) }
-    fun setSequentialDownload(infoHash: String, enabled: Boolean) { repository.setSequentialDownload(infoHash, enabled) }
+    fun pause(infoHash: String) {
+        viewModelScope.launch { repository.pauseTorrent(infoHash) }
+    }
+    fun resume(infoHash: String) {
+        viewModelScope.launch { repository.resumeTorrent(infoHash) }
+    }
+    fun remove(infoHash: String, deleteFiles: Boolean) {
+        viewModelScope.launch { repository.removeTorrent(infoHash, deleteFiles) }
+    }
+    fun setSequentialDownload(infoHash: String, enabled: Boolean) {
+        viewModelScope.launch { repository.setSequentialDownload(infoHash, enabled) }
+    }
 
     fun createTorrent(sourcePath: String, outputDir: String) {
         _createState.value = CreateState.Creating
@@ -91,16 +101,6 @@ class MainScreenViewModel(
     }
 
     fun dismissCreateResult() { _createState.value = CreateState.Idle }
-
-    fun onAppBackground() {
-        com.jpcottin.simpletorrent.data.TorrentManager.isInBackground = true
-        repository.setBackgroundMode(true)
-    }
-
-    fun onAppForeground() {
-        com.jpcottin.simpletorrent.data.TorrentManager.isInBackground = false
-        repository.setBackgroundMode(false)
-    }
 }
 
 sealed interface CreateState {

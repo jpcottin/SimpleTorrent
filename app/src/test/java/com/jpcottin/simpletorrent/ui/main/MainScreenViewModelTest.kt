@@ -174,12 +174,11 @@ private class FakeRepository(
     var lastRemovedDeleteFiles: Boolean? = null
 
     override suspend fun addMagnet(uri: String): String { lastAddedMagnet = uri; return addMagnetResult }
-    override fun pauseTorrent(infoHash: String) { lastPausedHash = infoHash }
-    override fun resumeTorrent(infoHash: String) { lastResumedHash = infoHash }
-    override fun removeTorrent(infoHash: String, deleteFiles: Boolean) {
+    override suspend fun pauseTorrent(infoHash: String) { lastPausedHash = infoHash }
+    override suspend fun resumeTorrent(infoHash: String) { lastResumedHash = infoHash }
+    override suspend fun removeTorrent(infoHash: String, deleteFiles: Boolean) {
         lastRemovedHash = infoHash; lastRemovedDeleteFiles = deleteFiles
     }
-    override fun setSequentialDownload(infoHash: String, enabled: Boolean) {}
+    override suspend fun setSequentialDownload(infoHash: String, enabled: Boolean) {}
     override suspend fun createTorrentFrom(sourcePath: String, outputDir: String) = createResult
-    override fun setBackgroundMode(isBackground: Boolean) {}
 }
