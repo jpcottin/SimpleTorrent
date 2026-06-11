@@ -72,10 +72,39 @@ object TorrentManager {
     var currentSavePath: String = ""
         private set
 
-    fun init(context: Context) {
+    fun init(
+        context: Context,
+        stateDir: String = context.filesDir.absolutePath + "/torrent_state",
+    ) {
         currentSavePath = resolvedSavePath(context)
-        val statePath = context.filesDir.absolutePath + "/torrent_state"
-        nativeInit(currentSavePath, statePath)
+        nativeInit(currentSavePath, stateDir)
+    }
+
+    @Volatile
+    private lateinit var appContext: Context
+
+    /** Returns the process-wide lifecycle coordinator, binding it to the application context. */
+    fun lifecycleCoordinator(context: Context): SessionLifecycleCoordinator {
+        appContext = context.applicationContext
+        return coordinator
+    }
+
+    /**
+     * Runs [block] on the session FIFO queue, after any pending init/save/release.
+     * This both guarantees the session is initialized and keeps the native call
+     * off the caller's thread.
+     */
+    suspend fun <T> withSession(block: suspend () -> T): T = coordinator.withSession(block)
+
+    private val coordinator by lazy {
+        SessionLifecycleCoordinator(object : TorrentSessionControl {
+            override fun savePathChanged() = resolvedSavePath(appContext) != currentSavePath
+            override fun init() = init(appContext)
+            override fun release() = nativeRelease()
+            override fun saveResumeData() = nativeSaveResumeData()
+            override fun setTickInterval(intervalMs: Int) = nativeSetTickInterval(intervalMs)
+            override fun setBackground(isBackground: Boolean) { isInBackground = isBackground }
+        })
     }
 
     fun getTorrents(): List<TorrentInfo> =

@@ -6,6 +6,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -575,9 +576,18 @@ internal fun TorrentCard(
                             text = { Text("Copy magnet") },
                             onClick = {
                                 showShareMenu = false
-                                val magnet = TorrentManager.getMagnetUri(torrent.infoHash)
-                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                clipboard.setPrimaryClip(ClipData.newPlainText("magnet", magnet))
+                                scope.launch {
+                                    // Session queue: waits for init and runs off the main thread
+                                    val magnet = TorrentManager.withSession {
+                                        TorrentManager.getMagnetUri(torrent.infoHash)
+                                    }
+                                    if (magnet.isEmpty()) {
+                                        Toast.makeText(context, "Magnet link unavailable", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                        clipboard.setPrimaryClip(ClipData.newPlainText("magnet", magnet))
+                                    }
+                                }
                             },
                         )
                         DropdownMenuItem(
