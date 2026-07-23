@@ -1,5 +1,26 @@
 # SimpleTorrent
 
+[![Android CI](https://github.com/jpcottin/SimpleTorrent/actions/workflows/android.yml/badge.svg?branch=master)](https://github.com/jpcottin/SimpleTorrent/actions/workflows/android.yml)
+
+<details>
+<summary><b>CI details</b> — emulator matrix, API 35 → 37.1, plus an Android CLI leg</summary>
+
+Instrumented legs run only on pushes to master (PRs run unit tests, lint, and both APK builds).
+
+| Legs | Image | Emulator channel | GPU | Gating |
+|---|---|---|---|---|
+| API 35 | `google_apis` x86_64 | stable | swiftshader | ✅ blocking |
+| API 37.0 | `google_apis_ps16k` (16 KB page size) | stable | lavapipe | non-blocking |
+| API 37.0 | `google_apis_ps16k` | canary (`--channel=3`) | lavapipe, auto | non-blocking |
+| API 37.1 | `google_apis_ps16k` | canary | lavapipe, auto | non-blocking |
+| Android CLI experiment | `google_apis_ps16k` 37.0 | canary | emulator default | non-blocking |
+
+The Android CLI leg drives the whole flow with the [`android` CLI](https://d.android.com/tools/agents/android-cli) (`android sdk install --canary`, `android emulator create/start/stop`) instead of `sdkmanager`/`avdmanager` and the emulator-runner action.
+
+All emulator-runner legs use full diagnostics (`-verbose -show-kernel -debug-metrics -metrics-collection`) and a `cmdline-tools;latest` update so `avdmanager` writes a valid `target=android-37.x` (the runner's preinstalled version writes `android-0`, which the emulator clamps to API 3, disabling the Vulkan/GLDirectMem auto-enable the ps16k images need).
+
+</details>
+
 A minimal, fully native BitTorrent client for Android, built as a learning project to explore the
 Android NDK and the libtorrent-rasterbar C++ library.
 
