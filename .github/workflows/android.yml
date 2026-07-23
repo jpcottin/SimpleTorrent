@@ -147,9 +147,64 @@ jobs:
   # ── Job 4: Instrumented (UI) tests — runs on demand or on main ──────────────
   # Requires NDK build + emulator; triggered only on pushes to main to save CI minutes.
   instrumented-tests:
-    name: Instrumented Tests
+    name: Instrumented Tests (API ${{ matrix.api-level }}${{ matrix.suffix && format(' {0}', matrix.suffix) || '' }})
     if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
+    # 37.x preview legs run non-blocking (matrix.experimental); the rest gate.
+    continue-on-error: ${{ matrix.experimental || false }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api-level: '35'
+            target: google_apis
+            gpu: swiftshader_indirect
+          # API 37.x ps16k legs. channel selects the emulator (and image
+          # revision) via sdkmanager --channel.
+          - api-level: '37.0'
+            suffix: 'stable-lavapipe'
+            target: google_apis_ps16k
+            ram-size: 4096M
+            memory-option: -memory 4096
+            gpu: lavapipe
+            cores: 4
+            experimental: true
+          - api-level: '37.0'
+            suffix: 'canary-lavapipe'
+            target: google_apis_ps16k
+            channel: canary
+            ram-size: 4096M
+            memory-option: -memory 4096
+            gpu: lavapipe
+            cores: 4
+            experimental: true
+          - api-level: '37.0'
+            suffix: 'canary-auto'
+            target: google_apis_ps16k
+            channel: canary
+            ram-size: 4096M
+            memory-option: -memory 4096
+            gpu: auto
+            cores: 4
+            experimental: true
+          - api-level: '37.1'
+            suffix: 'canary-lavapipe'
+            target: google_apis_ps16k
+            channel: canary
+            ram-size: 4096M
+            memory-option: -memory 4096
+            gpu: lavapipe
+            cores: 4
+            experimental: true
+          - api-level: '37.1'
+            suffix: 'canary-auto'
+            target: google_apis_ps16k
+            channel: canary
+            ram-size: 4096M
+            memory-option: -memory 4096
+            gpu: auto
+            cores: 4
+            experimental: true
     steps:
       - uses: actions/checkout@v6
         with:
@@ -168,6 +223,20 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+
+      # The runner image ships an outdated avdmanager that writes target=android-0
+      # for minor-versioned packages (android-37.x); the emulator clamps that to
+      # API 3 and skips the Vulkan/GLDirectMem auto-enable the ps16k images need.
+      - name: Update SDK cmdline-tools
+        run: |
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --install "cmdline-tools;latest" > /dev/null
+          # sdkmanager won't overwrite the preinstalled dir; it installs to latest-2.
+          if [ -d "$SDK/cmdline-tools/latest-2" ]; then
+            rm -rf "$SDK/cmdline-tools/latest"
+            mv "$SDK/cmdline-tools/latest-2" "$SDK/cmdline-tools/latest"
+          fi
+          "$SDK/cmdline-tools/latest/bin/avdmanager" list device > /dev/null
 
       - name: Install Boost via apt
         run: sudo apt-get install -y libboost-dev
@@ -188,16 +257,22 @@ jobs:
       - name: Run instrumented tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: ${{ matrix.api-level }}
           arch: x86_64
-          target: google_apis
+          target: ${{ matrix.target }}
+          channel: ${{ matrix.channel || 'stable' }}
           profile: pixel_6
-          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -verbose -debug-metrics -metrics-collection
-          script: ./gradlew connectedDebugAndroidTest --no-daemon
+          ram-size: ${{ matrix.ram-size }}
+          cores: ${{ matrix.cores }}
+          emulator-boot-timeout: 900
+          emulator-options: -no-window -no-snapshot -gpu ${{ matrix.gpu }} -noaudio -no-boot-anim -camera-back none ${{ matrix.memory-option || '' }} -delay-adb -verbose -show-kernel -debug-metrics -metrics-collection
+          script: |
+            echo "===== AVD root ini ====="; cat "$HOME/.android/avd/test.ini" 2>/dev/null || echo "(test.ini not found)"
+            ./gradlew connectedDebugAndroidTest --no-daemon
 
       - name: Upload instrumented test results
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: instrumented-test-results
+          name: instrumented-test-results-api${{ matrix.api-level }}${{ matrix.suffix && format('-{0}', matrix.suffix) || '' }}
           path: app/build/reports/androidTests/connected/
