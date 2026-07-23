@@ -265,7 +265,7 @@ jobs:
           ram-size: ${{ matrix.ram-size }}
           cores: ${{ matrix.cores }}
           emulator-boot-timeout: 900
-          emulator-options: -no-window -no-snapshot -gpu ${{ matrix.gpu }} -noaudio -no-boot-anim -camera-back none ${{ matrix.memory-option || '' }} -delay-adb -verbose -debug-metrics -metrics-collection
+          emulator-options: -no-window -no-snapshot -gpu ${{ matrix.gpu }} -noaudio -no-boot-anim -camera-back none ${{ matrix.memory-option || '' }} -delay-adb -verbose -show-kernel -debug-metrics -metrics-collection
           script: |
             echo "===== AVD root ini ====="; cat "$HOME/.android/avd/test.ini" 2>/dev/null || echo "(test.ini not found)"
             ./gradlew connectedDebugAndroidTest --no-daemon
