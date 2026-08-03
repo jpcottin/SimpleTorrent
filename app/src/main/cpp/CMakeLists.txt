@@ -17,6 +17,8 @@ endif()
 
 set(BUILD_SHARED_LIBS   OFF CACHE BOOL "" FORCE)
 set(encryption          OFF CACHE BOOL "" FORCE)
+# WebTorrent (libtorrent 2.1+) needs libdatachannel + a TLS stack; staged for later
+set(webtorrent          OFF CACHE BOOL "" FORCE)
 set(dht                 ON  CACHE BOOL "" FORCE)
 set(build_tests         OFF CACHE BOOL "" FORCE)
 set(build_examples      OFF CACHE BOOL "" FORCE)
