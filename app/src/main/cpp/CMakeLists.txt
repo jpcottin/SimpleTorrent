@@ -16,9 +16,23 @@ if(NOT EXISTS "${LIBTORRENT_DIR}/CMakeLists.txt")
 endif()
 
 set(BUILD_SHARED_LIBS   OFF CACHE BOOL "" FORCE)
-set(encryption          OFF CACHE BOOL "" FORCE)
-# WebTorrent (libtorrent 2.1+) needs libdatachannel + a TLS stack; staged for later
-set(webtorrent          OFF CACHE BOOL "" FORCE)
+
+# Static OpenSSL built by scripts/build-openssl-android.sh — needed for wss://
+# WebSocket trackers (WebTorrent), libdatachannel's DTLS, and encrypted peers.
+set(OPENSSL_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../libs/openssl-android/${ANDROID_ABI}")
+if(NOT EXISTS "${OPENSSL_ROOT_DIR}/lib/libssl.a")
+    message(FATAL_ERROR
+        "OpenSSL for ${ANDROID_ABI} not found at '${OPENSSL_ROOT_DIR}'.\n"
+        "Run: scripts/build-openssl-android.sh")
+endif()
+set(OPENSSL_USE_STATIC_LIBS TRUE)
+# The NDK toolchain re-roots find_library/find_path into the sysroot
+# (CMAKE_FIND_ROOT_PATH_MODE_* = ONLY); list the OpenSSL prefix as an extra
+# root so FindOpenSSL can see it.
+list(APPEND CMAKE_FIND_ROOT_PATH "${OPENSSL_ROOT_DIR}")
+
+set(encryption          ON  CACHE BOOL "" FORCE)
+set(webtorrent          ON  CACHE BOOL "" FORCE)
 set(dht                 ON  CACHE BOOL "" FORCE)
 set(build_tests         OFF CACHE BOOL "" FORCE)
 set(build_examples      OFF CACHE BOOL "" FORCE)

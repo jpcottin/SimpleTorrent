@@ -24,7 +24,7 @@ val SAMPLE_TORRENTS = listOf(
     ),
     SampleTorrent(
         "Sintel as WebTorrent",
-        "Same film with wss:// trackers — WebTorrent demo, browser-peer support coming",
+        "Same film via wss:// trackers — shares with browser peers (webtorrent.io)",
         "magnet:?xt=urn:btih:08ada5a7a6183aae1e09d831df6748d566095a10&dn=Sintel&tr=wss%3A%2F%2Ftracker.webtorrent.dev&tr=wss%3A%2F%2Ftracker.openwebtorrent.com&tr=wss%3A%2F%2Ftracker.btorrent.xyz&ws=https%3A%2F%2Fwebtorrent.io%2Ftorrents%2F&xs=https%3A%2F%2Fwebtorrent.io%2Ftorrents%2Fsintel.torrent",
     ),
     SampleTorrent(

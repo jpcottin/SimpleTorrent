@@ -44,7 +44,6 @@ android {
                     // libtorrent is in libs/libtorrent submodule — no path override needed
                     "-DBoost_DIR=$boostDir",
                     "-DBOOST_INCLUDE_DIR=$boostInclude",
-                    "-Dencryption=OFF",
                     "-DBUILD_SHARED_LIBS=OFF",
                     "-Dbuild_tests=OFF",
                     "-Dbuild_examples=OFF",

@@ -4,7 +4,6 @@ on:
   push:
     branches: [ master, main ]
   pull_request:
-    branches: [ master, main ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -76,6 +75,15 @@ jobs:
           echo "BOOST_INCLUDE_DIR=/opt/homebrew/include" >> "$GITHUB_ENV"
           echo "Found Boost CMake dir: $BOOST_DIR"
 
+      - name: Cache Android OpenSSL
+        uses: actions/cache@v4
+        with:
+          path: libs/openssl-android
+          key: openssl-android-3.5.7-${{ runner.os }}
+
+      - name: Build OpenSSL for Android
+        run: scripts/build-openssl-android.sh
+
       - name: Build debug APK
         run: ./gradlew assembleDebug --no-daemon
 
@@ -119,6 +127,15 @@ jobs:
           ln -sfn /usr/include/boost /tmp/boost-headers/boost
           echo "BOOST_INCLUDE_DIR=/tmp/boost-headers" >> "$GITHUB_ENV"
           echo "Found Boost CMake dir: $BOOST_DIR"
+
+      - name: Cache Android OpenSSL
+        uses: actions/cache@v4
+        with:
+          path: libs/openssl-android
+          key: openssl-android-3.5.7-${{ runner.os }}
+
+      - name: Build OpenSSL for Android
+        run: scripts/build-openssl-android.sh
 
       - name: Build debug APK
         run: ./gradlew assembleDebug --no-daemon
@@ -264,6 +281,15 @@ jobs:
           echo "BOOST_INCLUDE_DIR=/tmp/boost-headers" >> "$GITHUB_ENV"
           echo "Found Boost CMake dir: $BOOST_DIR"
 
+      - name: Cache Android OpenSSL
+        uses: actions/cache@v4
+        with:
+          path: libs/openssl-android
+          key: openssl-android-3.5.7-${{ runner.os }}
+
+      - name: Build OpenSSL for Android
+        run: scripts/build-openssl-android.sh
+
       - name: Run instrumented tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -321,6 +347,15 @@ jobs:
           mkdir -p /tmp/boost-headers
           ln -sfn /usr/include/boost /tmp/boost-headers/boost
           echo "BOOST_INCLUDE_DIR=/tmp/boost-headers" >> "$GITHUB_ENV"
+
+      - name: Cache Android OpenSSL
+        uses: actions/cache@v4
+        with:
+          path: libs/openssl-android
+          key: openssl-android-3.5.7-${{ runner.os }}
+
+      - name: Build OpenSSL for Android
+        run: scripts/build-openssl-android.sh
 
       - name: Enable KVM
         run: |
