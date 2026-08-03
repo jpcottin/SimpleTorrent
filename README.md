@@ -110,7 +110,7 @@ SimpleTorrent/
 │   └── res/
 │       ├── drawable/               # Adaptive icon (vector magnet)
 │       └── xml/file_provider_paths.xml
-├── libs/libtorrent/                # Git submodule (RC_2_1 branch)
+├── libs/libtorrent/                # Git submodule (fork branch RC_2_1-simpletorrent)
 ├── .github/workflows/android.yml  # CI pipeline
 ├── LICENSE                        # MIT (app) + BSD-3-Clause (libtorrent)
 └── README.md
