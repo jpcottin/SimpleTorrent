@@ -65,7 +65,7 @@ https://github.com/user-attachments/assets/6182efdb-9862-47ee-9fa7-011a64ee87eb
 
 | Layer | Technology |
 |---|---|
-| BitTorrent engine | [libtorrent-rasterbar](https://libtorrent.org) RC_2_0 (C++17, BSD-3-Clause) |
+| BitTorrent engine | [libtorrent-rasterbar](https://libtorrent.org) RC_2_1 (C++17, BSD-3-Clause) |
 | Native bridge | Android NDK r29, JNI (`torrent_jni.cpp`) |
 | Build system | CMake 3.22, Gradle AGP 9.0.1 |
 | Language | Kotlin 2.3.20 |
@@ -109,7 +109,7 @@ SimpleTorrent/
 │   └── res/
 │       ├── drawable/               # Adaptive icon (vector magnet)
 │       └── xml/file_provider_paths.xml
-├── libs/libtorrent/                # Git submodule (RC_2_0 branch)
+├── libs/libtorrent/                # Git submodule (RC_2_1 branch)
 ├── .github/workflows/android.yml  # CI pipeline
 ├── LICENSE                        # MIT (app) + BSD-3-Clause (libtorrent)
 └── README.md
