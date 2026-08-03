@@ -27,7 +27,8 @@ Android NDK and the libtorrent-rasterbar C++ library.
 ## Features
 
 - Add torrents via magnet links or `.torrent` files
-- Sample torrents library — curated list of public domain and Creative Commons content for quick testing (Big Buck Bunny, Cosmos Laundromat, Sintel, Tears of Steel)
+- WebTorrent support — announces to `wss://` WebSocket trackers and connects to browser peers over WebRTC data channels (libtorrent 2.1 + libdatachannel; TLS via a static OpenSSL build, trust anchored to the Android system CA store)
+- Sample torrents library — curated list of public domain and Creative Commons content for quick testing (Big Buck Bunny, Cosmos Laundromat, Sintel — also as a WebTorrent variant with `wss://` trackers, Tears of Steel)
 - Create `.torrent` files from any file or folder on the device and seed them immediately
 - Real-time piece-map visualization (missing / downloaded / actively transferring)
 - Collapsible per-torrent peer list (top 5 by download speed, refreshed every 3 s)
@@ -173,7 +174,11 @@ brew install boost
 git clone --recurse-submodules https://github.com/jpcottin/SimpleTorrent.git
 cd SimpleTorrent
 
-# 3. Open in Android Studio and run, or build from the command line:
+# 3. Build static OpenSSL for Android (one-time; needed for wss:// trackers,
+#    WebRTC DTLS, and encrypted peer connections)
+scripts/build-openssl-android.sh
+
+# 4. Open in Android Studio and run, or build from the command line:
 ./gradlew assembleDebug
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```

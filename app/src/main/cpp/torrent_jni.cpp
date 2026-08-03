@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdlib>
 #include <dirent.h>
 #include <fstream>
 #include <iomanip>
@@ -202,6 +203,47 @@ static void save_all_resume_data() {
     }
 }
 
+// ── Android CA bundle ────────────────────────────────────────────────────────
+// OpenSSL knows nothing about Android's trust store (individual PEM files in
+// /system/etc/security/cacerts, moved into the conscrypt APEX on Android 14+),
+// so wss:// tracker certificate validation fails with an empty store. Build a
+// single bundle from the system certs and expose it via SSL_CERT_FILE, which
+// libtorrent's set_default_verify_paths() picks up. Must run before the
+// session is created.
+static void export_system_ca_bundle(std::string const& state_dir) {
+    static const char* kCertDirs[] = {
+        "/apex/com.android.conscrypt/cacerts",
+        "/system/etc/security/cacerts",
+    };
+    std::string bundle_path = state_dir + "/cacerts.pem";
+    std::ofstream bundle(bundle_path, std::ios::trunc);
+    if (!bundle) {
+        LOGE("CA bundle: cannot write %s", bundle_path.c_str());
+        return;
+    }
+    int count = 0;
+    for (const char* dir_path : kCertDirs) {
+        DIR* dir = opendir(dir_path);
+        if (!dir) continue;
+        while (dirent* entry = readdir(dir)) {
+            if (entry->d_name[0] == '.') continue;
+            std::ifstream cert(std::string(dir_path) + "/" + entry->d_name);
+            if (!cert) continue;
+            bundle << cert.rdbuf() << '\n';
+            ++count;
+        }
+        closedir(dir);
+        if (count > 0) break;  // APEX dir supersedes the legacy one
+    }
+    bundle.close();
+    if (count > 0) {
+        setenv("SSL_CERT_FILE", bundle_path.c_str(), 1);
+        LOGI("CA bundle: %d system certs -> %s", count, bundle_path.c_str());
+    } else {
+        LOGE("CA bundle: no system certs found; wss:// trackers will fail validation");
+    }
+}
+
 // ── JNI ──────────────────────────────────────────────────────────────────────
 
 extern "C" {
@@ -220,12 +262,20 @@ Java_com_jpcottin_simpletorrent_data_TorrentManager_nativeInit(
     g_state_dir = sd;
     env->ReleaseStringUTFChars(statePath, sd);
 
+    // Needed for wss:// tracker TLS validation; must precede session creation.
+    export_system_ca_bundle(g_state_dir);
+
     lt::settings_pack settings;
     settings.set_int(lt::settings_pack::alert_mask,
         lt::alert::status_notification  |
         lt::alert::error_notification   |
         lt::alert::storage_notification |
-        lt::alert::tracker_notification);   // for tracker_error_alert, torrent_error_alert
+        lt::alert::tracker_notification     // for tracker_error_alert, torrent_error_alert
+#ifndef NDEBUG
+        | lt::alert::session_log_notification
+        | lt::alert::torrent_log_notification
+#endif
+        );
     settings.set_bool(lt::settings_pack::enable_dht, true);
     settings.set_bool(lt::settings_pack::enable_lsd, true);   // local peer discovery on same LAN
     settings.set_bool(lt::settings_pack::enable_upnp, true);
@@ -412,6 +462,11 @@ Java_com_jpcottin_simpletorrent_data_TorrentManager_getTorrentsJson(
                 LOGE("Tracker error [%s]: %s", hash.c_str(), tr->error.message().c_str());
             }
         }
+#ifndef NDEBUG
+        else if (lt::alert_cast<lt::log_alert>(a) || lt::alert_cast<lt::torrent_log_alert>(a)) {
+            __android_log_print(ANDROID_LOG_VERBOSE, "libtorrent", "%s", a->message().c_str());
+        }
+#endif
     }
 
     std::ostringstream json;
